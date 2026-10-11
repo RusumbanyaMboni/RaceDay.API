@@ -360,7 +360,7 @@ namespace RaceDay.API.Controllers
 
             var result = await _context.Results
                 .Include(r => r.Enrolment)
-                    .ThenInclude(e => e.Event)
+                    .ThenInclude(e => e!.Event)
                 .FirstOrDefaultAsync(
                     r => r.ResultId == id);
 
@@ -422,7 +422,7 @@ namespace RaceDay.API.Controllers
         {
             var result = await _context.Results
                 .Include(r => r.Enrolment)
-                    .ThenInclude(e => e.Event)
+                   .ThenInclude(e => e!.Event)
                 .FirstOrDefaultAsync(
                     r => r.ResultId == id);
 
