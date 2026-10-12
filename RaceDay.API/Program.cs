@@ -7,19 +7,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =========================================================
-// DATABASE
-// =========================================================
-
 builder.Services.AddDbContext<RaceDayDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("RaceDayConnection")
     ));
 
 
-// =========================================================
-// JWT AUTHENTICATION
-// =========================================================
 
 var jwtKey = builder.Configuration["Jwt:Key"];
 
@@ -39,9 +32,7 @@ builder.Services
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            // =====================================================
-            // SIGNING KEY
-            // =====================================================
+           
 
             ValidateIssuerSigningKey = true,
 
@@ -50,67 +41,37 @@ builder.Services
             ),
 
 
-            // =====================================================
-            // ISSUER
-            // =====================================================
+            
 
             ValidateIssuer = true,
 
             ValidIssuer = jwtIssuer,
 
 
-            // =====================================================
-            // AUDIENCE
-            // =====================================================
-
+           
             ValidateAudience = true,
 
             ValidAudience = jwtAudience,
 
 
-            // =====================================================
-            // TOKEN LIFETIME
-            // =====================================================
+           
 
             ValidateLifetime = true,
 
             ClockSkew = TimeSpan.Zero,
 
 
-            // =====================================================
-            // IMPORTANT ROLE CONFIGURATION
-            //
-            // AuthController creates:
-            //
-            // new Claim("RoleId", user.RoleId.ToString())
-            //
-            // Therefore we explicitly tell ASP.NET Core
-            // to use "RoleId" for:
-            //
-            // [Authorize(Roles = "1")]
-            // [Authorize(Roles = "2")]
-            // =====================================================
-
+            
             RoleClaimType = "RoleId",
 
-
-            // =====================================================
-            // USER NAME CLAIM
-            // =====================================================
 
             NameClaimType = ClaimTypes.Name
         };
 
 
-        // =====================================================
-        // JWT EVENTS
-        // =====================================================
-
         options.Events = new JwtBearerEvents
         {
-            // -----------------------------------------------------
-            // Authentication failure
-            // -----------------------------------------------------
+           
 
             OnAuthenticationFailed = context =>
             {
@@ -134,9 +95,7 @@ builder.Services
             },
 
 
-            // -----------------------------------------------------
-            // Token successfully validated
-            // -----------------------------------------------------
+          
 
             OnTokenValidated = context =>
             {
@@ -158,7 +117,7 @@ builder.Services
                 );
 
 
-                // Get user ID from JWT
+              
                 var userId = context.Principal?
                     .FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -167,7 +126,7 @@ builder.Services
                 );
 
 
-                // Get email from JWT
+               
                 var email = context.Principal?
                     .FindFirst(ClaimTypes.Email)?.Value;
 
@@ -186,16 +145,12 @@ builder.Services
     });
 
 
-// =========================================================
-// AUTHORIZATION
-// =========================================================
+
 
 builder.Services.AddAuthorization();
 
 
-// =========================================================
-// CONTROLLERS
-// =========================================================
+
 
 builder.Services.AddControllers();
 
