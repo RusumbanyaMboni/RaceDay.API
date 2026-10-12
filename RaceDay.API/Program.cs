@@ -108,7 +108,7 @@ builder.Services
                 );
 
 
-                // Get RoleId from JWT
+                
                 var roleId = context.Principal?
                     .FindFirst("RoleId")?.Value;
 
@@ -155,17 +155,12 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 
-// =========================================================
-// SWAGGER
-// =========================================================
 
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
-    // ---------------------------------------------------------
-    // Bearer Authentication
-    // ---------------------------------------------------------
+  
 
     options.AddSecurityDefinition(
         "Bearer",
@@ -188,9 +183,6 @@ builder.Services.AddSwaggerGen(options =>
         });
 
 
-    // ---------------------------------------------------------
-    // Apply Bearer authentication to Swagger endpoints
-    // ---------------------------------------------------------
 
     options.AddSecurityRequirement(
         new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -214,16 +206,11 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 
-// =========================================================
-// BUILD APPLICATION
-// =========================================================
 
 var app = builder.Build();
 
 
-// =========================================================
-// SWAGGER
-// =========================================================
+
 
 if (app.Environment.IsDevelopment())
 {
