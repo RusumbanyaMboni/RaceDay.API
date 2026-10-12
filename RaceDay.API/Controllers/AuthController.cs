@@ -26,15 +26,6 @@ namespace RaceDay.API.Controllers
             _configuration = configuration;
         }
 
-
-        // =========================================================
-        // POST: /api/Auth/register
-        //
-        // Registers a new Organiser or Participant.
-        // Password is received as plain text and converted to
-        // PasswordHash before being stored in the database.
-        // =========================================================
-
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register(
@@ -45,9 +36,6 @@ namespace RaceDay.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            // -----------------------------------------------------
-            // Check if email already exists
-            // -----------------------------------------------------
 
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u =>
@@ -62,9 +50,6 @@ namespace RaceDay.API.Controllers
             }
 
 
-            // -----------------------------------------------------
-            // Check that the selected role exists
-            // -----------------------------------------------------
 
             var role = await _context.Roles
                 .FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
