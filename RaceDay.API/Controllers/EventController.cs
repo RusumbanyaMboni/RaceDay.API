@@ -90,6 +90,27 @@ namespace RaceDay.API.Controllers
                 return BadRequest(ModelState);
             }
 
+            // =====================================================
+            // VALIDATE EVENT TYPE
+            // =====================================================
+            // Only run, walk and cycle are allowed.
+            var validEventTypes = new[] { "run", "walk", "cycle" };
+
+            if (string.IsNullOrWhiteSpace(eventItem.EventType) ||
+                !validEventTypes.Contains(
+                    eventItem.EventType.Trim(),
+                    StringComparer.OrdinalIgnoreCase))
+            {
+                return BadRequest(new
+                {
+                    message = "Event type must be one of: run, walk, or cycle."
+                });
+            }
+
+            // Normalize the value before saving it.
+            eventItem.EventType =
+                eventItem.EventType.Trim().ToLowerInvariant();
+
             // Get logged-in user's ID from JWT
             var userId = GetCurrentUserId();
 
@@ -141,6 +162,27 @@ namespace RaceDay.API.Controllers
             {
                 return BadRequest(ModelState);
             }
+
+            // =====================================================
+            // VALIDATE EVENT TYPE
+            // =====================================================
+            // Only run, walk and cycle are allowed.
+            var validEventTypes = new[] { "run", "walk", "cycle" };
+
+            if (string.IsNullOrWhiteSpace(eventItem.EventType) ||
+                !validEventTypes.Contains(
+                    eventItem.EventType.Trim(),
+                    StringComparer.OrdinalIgnoreCase))
+            {
+                return BadRequest(new
+                {
+                    message = "Event type must be one of: run, walk, or cycle."
+                });
+            }
+
+            // Normalize the value before saving it.
+            eventItem.EventType =
+                eventItem.EventType.Trim().ToLowerInvariant();
 
             // Get logged-in user's ID
             var userId = GetCurrentUserId();
@@ -291,7 +333,7 @@ namespace RaceDay.API.Controllers
         // =========================================================
         // GET CURRENT USER ID FROM JWT
         // =========================================================
-       
+
         private int? GetCurrentUserId()
         {
             var userIdClaim =
