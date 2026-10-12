@@ -130,10 +130,6 @@ namespace RaceDay.API.Controllers
             }
 
 
-            // -----------------------------------------------------
-            // Check password
-            // -----------------------------------------------------
-
             bool passwordValid;
 
             try
@@ -156,9 +152,6 @@ namespace RaceDay.API.Controllers
             }
 
 
-            // -----------------------------------------------------
-            // Get user's role
-            // -----------------------------------------------------
 
             var role = await _context.Roles
                 .FirstOrDefaultAsync(r =>
@@ -173,16 +166,9 @@ namespace RaceDay.API.Controllers
             }
 
 
-            // -----------------------------------------------------
-            // Generate JWT token
-            // -----------------------------------------------------
-
             var token = GenerateJwtToken(user, role.RoleName);
 
 
-            // -----------------------------------------------------
-            // Return login response
-            // -----------------------------------------------------
 
             return Ok(new
             {
@@ -204,19 +190,11 @@ namespace RaceDay.API.Controllers
             });
         }
 
-
-        // =========================================================
-        // GET: /api/Auth/me
-        //
-        // Returns the details of the currently authenticated user.
-        // Requires a valid JWT token.
-        // =========================================================
-
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> AuthMe()
         {
-            // Get the authenticated user's ID from the JWT
+    
             var userIdClaim =
                 User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value
@@ -230,7 +208,6 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-            // Find the user in the database
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserId == userId);
 
@@ -300,9 +277,7 @@ namespace RaceDay.API.Controllers
                 ?? "RaceDay.Client";
 
 
-            // -----------------------------------------------------
-            // Create claims
-            // -----------------------------------------------------
+           
 
             var claims = new List<Claim>
 {
