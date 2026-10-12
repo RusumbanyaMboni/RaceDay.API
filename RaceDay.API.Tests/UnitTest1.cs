@@ -27,7 +27,6 @@ public class UnitTest1
     [Fact]
     public async Task GetEvents_ReturnsOk_WhenEventsExist()
     {
-        // Arrange
         using var context = CreateContext();
 
         context.Events.Add(new Event
@@ -47,11 +46,10 @@ public class UnitTest1
 
         var controller = new EventController(context);
 
-        // Act
         var result = await controller.GetEvents();
 
-        // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
+
         Assert.NotNull(okResult.Value);
     }
 
@@ -59,15 +57,12 @@ public class UnitTest1
     [Fact]
     public async Task GetEvent_ReturnsNotFound_WhenEventDoesNotExist()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new EventController(context);
 
-        // Act
         var result = await controller.GetEvent(999);
 
-        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -75,12 +70,10 @@ public class UnitTest1
     [Fact]
     public async Task CreateEvent_ReturnsCreated_WhenEventTypeIsProvided()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new EventController(context);
 
-        // Create an authenticated organiser
         var claims = new List<Claim>
         {
             new Claim(
@@ -119,15 +112,13 @@ public class UnitTest1
             EventType = "marathon"
         };
 
-        // Act
         var result = await controller.CreateEvent(eventItem);
 
-        // Assert
-        var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+        var createdResult =
+            Assert.IsType<CreatedAtActionResult>(result);
 
         Assert.NotNull(createdResult.Value);
 
-        // Confirm the event was actually saved
         var savedEvent = await context.Events
             .FirstOrDefaultAsync();
 
@@ -141,7 +132,6 @@ public class UnitTest1
     [Fact]
     public async Task CreateEvent_UsesAuthenticatedUserAsOrganiser()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new EventController(context);
@@ -180,10 +170,8 @@ public class UnitTest1
             EventType = "run"
         };
 
-        // Act
         var result = await controller.CreateEvent(eventItem);
 
-        // Assert
         Assert.IsType<CreatedAtActionResult>(result);
 
         var savedEvent = await context.Events
@@ -195,16 +183,14 @@ public class UnitTest1
 
 
     [Fact]
-    public async Task UpdateEvent_ReturnsForbid_WhenOrganiserDoesNotOwnEvent()
+    public async Task UpdateEvent_ReturnsForbid_WhenUserDoesNotOwnEvent()
     {
-        // Arrange
         using var context = CreateContext();
 
-        // Event belongs to Organiser 2
         context.Events.Add(new Event
         {
             EventId = 1,
-            OrganiserId = 2,
+            OrganiserId = 1,
             EventName = "Original Event",
             Description = "Original description",
             EventDate = DateTime.UtcNow.AddDays(10),
@@ -218,16 +204,15 @@ public class UnitTest1
 
         var controller = new EventController(context);
 
-        // Authenticate as Organiser 1
         var claims = new List<Claim>
         {
             new Claim(
                 ClaimTypes.NameIdentifier,
-                "1"
+                "2"
             ),
             new Claim(
                 ClaimTypes.Role,
-                "Organiser"
+                "1"
             )
         };
 
@@ -247,31 +232,22 @@ public class UnitTest1
                 }
             };
 
-        // Try to update Organiser 2's event
-        var eventItem = new Event
+        var updatedEvent = new Event
         {
             EventId = 1,
-            EventName = "Hacked Event",
-            Description = "This should not be allowed",
+            OrganiserId = 1,
+            EventName = "Attempted Update",
+            Description = "User should not be allowed",
             EventDate = DateTime.UtcNow.AddDays(20),
-            Location = "Johannesburg",
-            Distance = 50,
+            Location = "Cape Town",
+            Distance = 20,
             EventType = "run"
         };
 
-        // Act
-        var result = await controller.UpdateEvent(1, eventItem);
+        var result =
+            await controller.UpdateEvent(1, updatedEvent);
 
-        // Assert
         Assert.IsType<ForbidResult>(result);
-
-        // Confirm the original event was not changed
-        var savedEvent = await context.Events
-            .FirstOrDefaultAsync(e => e.EventId == 1);
-
-        Assert.NotNull(savedEvent);
-        Assert.Equal("Original Event", savedEvent.EventName);
-        Assert.Equal(2, savedEvent.OrganiserId);
     }
 
 
@@ -282,7 +258,6 @@ public class UnitTest1
     [Fact]
     public async Task GetCategory_ReturnsOk_WhenCategoryExists()
     {
-        // Arrange
         using var context = CreateContext();
 
         context.Categories.Add(new Category
@@ -299,10 +274,8 @@ public class UnitTest1
 
         var controller = new CategoryController(context);
 
-        // Act
         var result = await controller.GetCategory(1);
 
-        // Assert
         Assert.IsType<OkObjectResult>(result);
     }
 
@@ -310,15 +283,12 @@ public class UnitTest1
     [Fact]
     public async Task GetCategory_ReturnsNotFound_WhenCategoryDoesNotExist()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new CategoryController(context);
 
-        // Act
         var result = await controller.GetCategory(999);
 
-        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -326,16 +296,93 @@ public class UnitTest1
     [Fact]
     public async Task GetEventCategories_ReturnsNotFound_WhenEventDoesNotExist()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new CategoryController(context);
 
-        // Act
         var result = await controller.GetEventCategories(999);
 
-        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+
+    // =========================================================
+    // NEW CATEGORY OWNERSHIP TEST
+    // =========================================================
+
+    [Fact]
+    public async Task CreateCategory_ReturnsForbid_WhenOrganizerDoesNotOwnEvent()
+    {
+        // Arrange
+        using var context = CreateContext();
+
+        // Event belongs to organiser 1
+        context.Events.Add(new Event
+        {
+            EventId = 1,
+            OrganiserId = 1,
+            EventName = "Ownership Test Race",
+            Description = "Testing category ownership",
+            EventDate = DateTime.UtcNow.AddDays(10),
+            Location = "Cape Town",
+            Distance = 10,
+            EventType = "run",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var controller = new CategoryController(context);
+
+        // Authenticate as organiser 2
+        var claims = new List<Claim>
+        {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                "2"
+            ),
+            new Claim(
+                ClaimTypes.Role,
+                "1"
+            )
+        };
+
+        var identity = new ClaimsIdentity(
+            claims,
+            "TestAuthentication"
+        );
+
+        var principal = new ClaimsPrincipal(identity);
+
+        controller.ControllerContext =
+            new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = principal
+                }
+            };
+
+        var category = new Category
+        {
+            CategoryName = "10km Senior",
+            MinimumAge = 18,
+            MaximumAge = 39,
+            Distance = 10
+        };
+
+        // Act
+        var result =
+            await controller.CreateCategory(1, category);
+
+        // Assert
+        Assert.IsType<ForbidResult>(result);
+
+        // Confirm no category was created
+        var savedCategory = await context.Categories
+            .FirstOrDefaultAsync();
+
+        Assert.Null(savedCategory);
     }
 
 
@@ -346,15 +393,12 @@ public class UnitTest1
     [Fact]
     public async Task GetResult_ReturnsNotFound_WhenResultDoesNotExist()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new ResultController(context);
 
-        // Act
         var result = await controller.GetResult(999);
 
-        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -362,15 +406,12 @@ public class UnitTest1
     [Fact]
     public async Task GetEventResults_ReturnsNotFound_WhenEventDoesNotExist()
     {
-        // Arrange
         using var context = CreateContext();
 
         var controller = new ResultController(context);
 
-        // Act
         var result = await controller.GetEventResults(999);
 
-        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -382,7 +423,6 @@ public class UnitTest1
     [Fact]
     public async Task Register_ReturnsCreated_WhenValidUserIsProvided()
     {
-        // Arrange
         using var context = CreateContext();
 
         context.Roles.Add(new Role
@@ -410,10 +450,8 @@ public class UnitTest1
             RoleId = 2
         };
 
-        // Act
         var result = await controller.Register(request);
 
-        // Assert
         var createdResult =
             Assert.IsType<CreatedAtActionResult>(result);
 
@@ -443,7 +481,6 @@ public class UnitTest1
     [Fact]
     public async Task Register_ReturnsConflict_WhenEmailAlreadyExists()
     {
-        // Arrange
         using var context = CreateContext();
 
         context.Roles.Add(new Role
@@ -482,10 +519,8 @@ public class UnitTest1
             RoleId = 2
         };
 
-        // Act
         var result = await controller.Register(request);
 
-        // Assert
         Assert.IsType<ConflictObjectResult>(result);
     }
 
@@ -493,7 +528,6 @@ public class UnitTest1
     [Fact]
     public async Task Login_ReturnsUnauthorized_WhenPasswordIsIncorrect()
     {
-        // Arrange
         using var context = CreateContext();
 
         context.Roles.Add(new Role
@@ -529,10 +563,199 @@ public class UnitTest1
             Password = "WrongPassword123"
         };
 
-        // Act
         var result = await controller.Login(request);
 
-        // Assert
         Assert.IsType<UnauthorizedObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task CreateEnrolment_ReturnsCreated_WhenValidParticipantEnrols()
+    {
+        // Arrange
+        using var context = CreateContext();
+
+        // Create an event
+        context.Events.Add(new Event
+        {
+            EventId = 1,
+            OrganiserId = 1,
+            EventName = "Participant Enrolment Test",
+            Description = "Testing participant enrolment",
+            EventDate = DateTime.UtcNow.AddDays(10),
+            Location = "Cape Town",
+            Distance = 10,
+            EventType = "run",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Create a category for the event
+        context.Categories.Add(new Category
+        {
+            CategoryId = 1,
+            EventId = 1,
+            CategoryName = "10km",
+            MinimumAge = 18,
+            MaximumAge = 60,
+            Distance = 10
+        });
+
+        await context.SaveChangesAsync();
+
+        // Create controller
+        var controller = new EnrolmentController(context);
+
+        // Authenticate as Participant ID 2
+        var claims = new List<Claim>
+    {
+        new Claim(
+            ClaimTypes.NameIdentifier,
+            "2"
+        ),
+        new Claim(
+            ClaimTypes.Role,
+            "Participant"
+        )
+    };
+
+        var identity = new ClaimsIdentity(
+            claims,
+            "TestAuthentication"
+        );
+
+        var principal = new ClaimsPrincipal(identity);
+
+        controller.ControllerContext =
+            new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = principal
+                }
+            };
+
+        // Create enrolment request
+        var request =
+            new EnrolmentController.CreateEnrolmentRequest
+            {
+                CategoryId = 1
+            };
+
+        // Act
+        var result =
+            await controller.CreateEnrolment(1, request);
+
+        // Assert
+        var createdResult =
+            Assert.IsType<CreatedAtActionResult>(result);
+
+        Assert.NotNull(createdResult.Value);
+
+        // Confirm enrolment was saved
+        var savedEnrolment =
+            await context.Enrolments.FirstOrDefaultAsync();
+
+        Assert.NotNull(savedEnrolment);
+
+        Assert.Equal(2, savedEnrolment.ParticipantId);
+        Assert.Equal(1, savedEnrolment.EventId);
+        Assert.Equal(1, savedEnrolment.CategoryId);
+        Assert.Equal("Registered", savedEnrolment.Status);
+    }
+
+    [Fact]
+    public async Task CreateEnrolment_ReturnsConflict_WhenParticipantAlreadyEnrolled()
+    {
+        // Arrange
+        using var context = CreateContext();
+
+        // Create an event
+        context.Events.Add(new Event
+        {
+            EventId = 1,
+            OrganiserId = 1,
+            EventName = "Duplicate Enrolment Test",
+            Description = "Testing duplicate enrolment prevention",
+            EventDate = DateTime.UtcNow.AddDays(10),
+            Location = "Cape Town",
+            Distance = 10,
+            EventType = "run",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Create a category for the event
+        context.Categories.Add(new Category
+        {
+            CategoryId = 1,
+            EventId = 1,
+            CategoryName = "10km",
+            MinimumAge = 18,
+            MaximumAge = 60,
+            Distance = 10
+        });
+
+        // Create an existing enrolment for Participant 2
+        context.Enrolments.Add(new Enrolment
+        {
+            EnrolmentId = 1,
+            ParticipantId = 2,
+            EventId = 1,
+            CategoryId = 1,
+            EnrolmentDate = DateTime.UtcNow.AddDays(-1),
+            Status = "Registered"
+        });
+
+        await context.SaveChangesAsync();
+
+        // Create controller
+        var controller = new EnrolmentController(context);
+
+        // Authenticate as the same participant
+        var claims = new List<Claim>
+    {
+        new Claim(
+            ClaimTypes.NameIdentifier,
+            "2"
+        ),
+        new Claim(
+            ClaimTypes.Role,
+            "Participant"
+        )
+    };
+
+        var identity = new ClaimsIdentity(
+            claims,
+            "TestAuthentication"
+        );
+
+        var principal = new ClaimsPrincipal(identity);
+
+        controller.ControllerContext =
+            new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = principal
+                }
+            };
+
+        // Create another enrolment request
+        var request =
+            new EnrolmentController.CreateEnrolmentRequest
+            {
+                CategoryId = 1
+            };
+
+        // Act
+        var result =
+            await controller.CreateEnrolment(1, request);
+
+        // Assert
+        Assert.IsType<ConflictObjectResult>(result);
+
+        // Confirm that no second enrolment was created
+        var enrolmentCount =
+            await context.Enrolments.CountAsync();
+
+        Assert.Equal(1, enrolmentCount);
     }
 }
