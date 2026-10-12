@@ -63,10 +63,6 @@ namespace RaceDay.API.Controllers
             }
 
 
-            // -----------------------------------------------------
-            // Create new User
-            // -----------------------------------------------------
-
             var user = new User
             {
                 FirstName = request.FirstName.Trim(),
@@ -76,30 +72,20 @@ namespace RaceDay.API.Controllers
                 DateOfBirth = request.DateOfBirth,
                 RoleId = request.RoleId,
 
-                // IMPORTANT:
-                // Password is hashed before it is stored.
+            
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(
                     request.Password),
 
-                // Created by the server
+                
                 CreatedAt = DateTime.UtcNow
             };
 
-
-            // -----------------------------------------------------
-            // Save user
-            // -----------------------------------------------------
 
             _context.Users.Add(user);
 
             await _context.SaveChangesAsync();
 
 
-            // -----------------------------------------------------
-            // Return successful registration response
-            //
-            // DO NOT return PasswordHash.
-            // -----------------------------------------------------
 
             return CreatedAtAction(
                 nameof(Register),
@@ -119,12 +105,6 @@ namespace RaceDay.API.Controllers
         }
 
 
-        // =========================================================
-        // POST: /api/Auth/login
-        //
-        // Authenticates a user and returns a JWT token.
-        // =========================================================
-
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login(
@@ -136,9 +116,6 @@ namespace RaceDay.API.Controllers
             }
 
 
-            // -----------------------------------------------------
-            // Find user
-            // -----------------------------------------------------
 
             var user = await _context.Users
                 .FirstOrDefaultAsync(u =>
