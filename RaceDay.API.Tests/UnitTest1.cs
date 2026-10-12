@@ -141,7 +141,7 @@ public class UnitTest1
     [Fact]
     public async Task CreateEvent_UsesAuthenticatedUserAsOrganiser()
     {
-        // Arrange
+        
         using var context = CreateContext();
 
         var controller = new EventController(context);
@@ -201,7 +201,7 @@ public class UnitTest1
     [Fact]
     public async Task GetCategory_ReturnsOk_WhenCategoryExists()
     {
-        // Arrange
+        
         using var context = CreateContext();
 
         context.Categories.Add(new Category
@@ -218,10 +218,10 @@ public class UnitTest1
 
         var controller = new CategoryController(context);
 
-        // Act
+        
         var result = await controller.GetCategory(1);
 
-        // Assert
+        
         Assert.IsType<OkObjectResult>(result);
     }
 
@@ -229,15 +229,15 @@ public class UnitTest1
     [Fact]
     public async Task GetCategory_ReturnsNotFound_WhenCategoryDoesNotExist()
     {
-        // Arrange
+        
         using var context = CreateContext();
 
         var controller = new CategoryController(context);
 
-        // Act
+      
         var result = await controller.GetCategory(999);
 
-        // Assert
+       
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -245,15 +245,15 @@ public class UnitTest1
     [Fact]
     public async Task GetEventCategories_ReturnsNotFound_WhenEventDoesNotExist()
     {
-        // Arrange
+        
         using var context = CreateContext();
 
         var controller = new CategoryController(context);
 
-        // Act
+      
         var result = await controller.GetEventCategories(999);
 
-        // Assert
+     
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -291,5 +291,167 @@ public class UnitTest1
 
         // Assert
         Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    // =========================================================
+    // AUTHENTICATION TESTS
+    // =========================================================
+
+    [Fact]
+    public async Task Register_ReturnsCreated_WhenValidUserIsProvided()
+    {
+        
+        using var context = CreateContext();
+
+        context.Roles.Add(new Role
+        {
+            RoleId = 2,
+            RoleName = "Participant"
+        });
+
+        await context.SaveChangesAsync();
+
+        var configuration =
+            new Microsoft.Extensions.Configuration.ConfigurationManager();
+
+        var controller = new AuthController(
+            context,
+            configuration);
+
+        var request = new AuthController.RegisterRequest
+        {
+            FirstName = "Test",
+            LastName = "Participant",
+            Email = "test@example.com",
+            Password = "Password123",
+            PhoneNumber = "0821234567",
+            RoleId = 2
+        };
+
+        
+        var result = await controller.Register(request);
+
+        
+        var createdResult =
+            Assert.IsType<CreatedAtActionResult>(result);
+
+        Assert.NotNull(createdResult.Value);
+
+        var savedUser = await context.Users
+            .FirstOrDefaultAsync(u =>
+                u.Email == "test@example.com");
+
+        Assert.NotNull(savedUser);
+
+        Assert.Equal("Test", savedUser.FirstName);
+        Assert.Equal("Participant", savedUser.LastName);
+        Assert.Equal(2, savedUser.RoleId);
+
+       
+        Assert.NotEqual(
+            "Password123",
+            savedUser.PasswordHash);
+
+        Assert.True(
+            BCrypt.Net.BCrypt.Verify(
+                "Password123",
+                savedUser.PasswordHash));
+    }
+
+
+    [Fact]
+    public async Task Register_ReturnsConflict_WhenEmailAlreadyExists()
+    {
+        
+        using var context = CreateContext();
+
+        context.Roles.Add(new Role
+        {
+            RoleId = 2,
+            RoleName = "Participant"
+        });
+
+        context.Users.Add(new User
+        {
+            UserId = 1,
+            FirstName = "Existing",
+            LastName = "User",
+            Email = "existing@example.com",
+            PasswordHash =
+                BCrypt.Net.BCrypt.HashPassword("Password123"),
+            RoleId = 2,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var configuration =
+            new Microsoft.Extensions.Configuration.ConfigurationManager();
+
+        var controller = new AuthController(
+            context,
+            configuration);
+
+        var request = new AuthController.RegisterRequest
+        {
+            FirstName = "Another",
+            LastName = "User",
+            Email = "existing@example.com",
+            Password = "Password123",
+            RoleId = 2
+        };
+
+        
+        var result = await controller.Register(request);
+
+       
+        Assert.IsType<ConflictObjectResult>(result);
+    }
+
+
+    [Fact]
+    public async Task Login_ReturnsUnauthorized_WhenPasswordIsIncorrect()
+    {
+       
+        using var context = CreateContext();
+
+        context.Roles.Add(new Role
+        {
+            RoleId = 2,
+            RoleName = "Participant"
+        });
+
+        context.Users.Add(new User
+        {
+            UserId = 1,
+            FirstName = "Test",
+            LastName = "Participant",
+            Email = "test@example.com",
+            PasswordHash =
+                BCrypt.Net.BCrypt.HashPassword("CorrectPassword123"),
+            RoleId = 2,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var configuration =
+            new Microsoft.Extensions.Configuration.ConfigurationManager();
+
+        var controller = new AuthController(
+            context,
+            configuration);
+
+        var request = new AuthController.LoginRequest
+        {
+            Email = "test@example.com",
+            Password = "WrongPassword123"
+        };
+
+       
+        var result = await controller.Login(request);
+
+        
+        Assert.IsType<UnauthorizedObjectResult>(result);
     }
 }
