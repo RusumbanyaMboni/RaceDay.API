@@ -71,7 +71,7 @@ public class UnitTest1
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
-   
+
     [Fact]
     public async Task CreateEvent_ReturnsCreated_WhenEventTypeIsProvided()
     {
@@ -82,16 +82,16 @@ public class UnitTest1
 
         // Create an authenticated organiser
         var claims = new List<Claim>
-    {
-        new Claim(
-            ClaimTypes.NameIdentifier,
-            "1"
-        ),
-        new Claim(
-            ClaimTypes.Role,
-            "Organiser"
-        )
-    };
+        {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                "1"
+            ),
+            new Claim(
+                ClaimTypes.Role,
+                "Organiser"
+            )
+        };
 
         var identity = new ClaimsIdentity(
             claims,
@@ -141,7 +141,7 @@ public class UnitTest1
     [Fact]
     public async Task CreateEvent_UsesAuthenticatedUserAsOrganiser()
     {
-        
+        // Arrange
         using var context = CreateContext();
 
         var controller = new EventController(context);
@@ -194,6 +194,87 @@ public class UnitTest1
     }
 
 
+    [Fact]
+    public async Task UpdateEvent_ReturnsForbid_WhenOrganiserDoesNotOwnEvent()
+    {
+        // Arrange
+        using var context = CreateContext();
+
+        // Event belongs to Organiser 2
+        context.Events.Add(new Event
+        {
+            EventId = 1,
+            OrganiserId = 2,
+            EventName = "Original Event",
+            Description = "Original description",
+            EventDate = DateTime.UtcNow.AddDays(10),
+            Location = "Cape Town",
+            Distance = 10,
+            EventType = "run",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var controller = new EventController(context);
+
+        // Authenticate as Organiser 1
+        var claims = new List<Claim>
+        {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                "1"
+            ),
+            new Claim(
+                ClaimTypes.Role,
+                "Organiser"
+            )
+        };
+
+        var identity = new ClaimsIdentity(
+            claims,
+            "TestAuthentication"
+        );
+
+        var principal = new ClaimsPrincipal(identity);
+
+        controller.ControllerContext =
+            new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = principal
+                }
+            };
+
+        // Try to update Organiser 2's event
+        var eventItem = new Event
+        {
+            EventId = 1,
+            EventName = "Hacked Event",
+            Description = "This should not be allowed",
+            EventDate = DateTime.UtcNow.AddDays(20),
+            Location = "Johannesburg",
+            Distance = 50,
+            EventType = "run"
+        };
+
+        // Act
+        var result = await controller.UpdateEvent(1, eventItem);
+
+        // Assert
+        Assert.IsType<ForbidResult>(result);
+
+        // Confirm the original event was not changed
+        var savedEvent = await context.Events
+            .FirstOrDefaultAsync(e => e.EventId == 1);
+
+        Assert.NotNull(savedEvent);
+        Assert.Equal("Original Event", savedEvent.EventName);
+        Assert.Equal(2, savedEvent.OrganiserId);
+    }
+
+
     // =========================================================
     // CATEGORY TESTS
     // =========================================================
@@ -201,7 +282,7 @@ public class UnitTest1
     [Fact]
     public async Task GetCategory_ReturnsOk_WhenCategoryExists()
     {
-        
+        // Arrange
         using var context = CreateContext();
 
         context.Categories.Add(new Category
@@ -218,10 +299,10 @@ public class UnitTest1
 
         var controller = new CategoryController(context);
 
-        
+        // Act
         var result = await controller.GetCategory(1);
 
-        
+        // Assert
         Assert.IsType<OkObjectResult>(result);
     }
 
@@ -229,15 +310,15 @@ public class UnitTest1
     [Fact]
     public async Task GetCategory_ReturnsNotFound_WhenCategoryDoesNotExist()
     {
-        
+        // Arrange
         using var context = CreateContext();
 
         var controller = new CategoryController(context);
 
-      
+        // Act
         var result = await controller.GetCategory(999);
 
-       
+        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -245,15 +326,15 @@ public class UnitTest1
     [Fact]
     public async Task GetEventCategories_ReturnsNotFound_WhenEventDoesNotExist()
     {
-        
+        // Arrange
         using var context = CreateContext();
 
         var controller = new CategoryController(context);
 
-      
+        // Act
         var result = await controller.GetEventCategories(999);
 
-     
+        // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
@@ -293,6 +374,7 @@ public class UnitTest1
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
+
     // =========================================================
     // AUTHENTICATION TESTS
     // =========================================================
@@ -300,7 +382,7 @@ public class UnitTest1
     [Fact]
     public async Task Register_ReturnsCreated_WhenValidUserIsProvided()
     {
-        
+        // Arrange
         using var context = CreateContext();
 
         context.Roles.Add(new Role
@@ -328,10 +410,10 @@ public class UnitTest1
             RoleId = 2
         };
 
-        
+        // Act
         var result = await controller.Register(request);
 
-        
+        // Assert
         var createdResult =
             Assert.IsType<CreatedAtActionResult>(result);
 
@@ -347,7 +429,6 @@ public class UnitTest1
         Assert.Equal("Participant", savedUser.LastName);
         Assert.Equal(2, savedUser.RoleId);
 
-       
         Assert.NotEqual(
             "Password123",
             savedUser.PasswordHash);
@@ -362,7 +443,7 @@ public class UnitTest1
     [Fact]
     public async Task Register_ReturnsConflict_WhenEmailAlreadyExists()
     {
-        
+        // Arrange
         using var context = CreateContext();
 
         context.Roles.Add(new Role
@@ -401,10 +482,10 @@ public class UnitTest1
             RoleId = 2
         };
 
-        
+        // Act
         var result = await controller.Register(request);
 
-       
+        // Assert
         Assert.IsType<ConflictObjectResult>(result);
     }
 
@@ -412,7 +493,7 @@ public class UnitTest1
     [Fact]
     public async Task Login_ReturnsUnauthorized_WhenPasswordIsIncorrect()
     {
-       
+        // Arrange
         using var context = CreateContext();
 
         context.Roles.Add(new Role
@@ -448,10 +529,10 @@ public class UnitTest1
             Password = "WrongPassword123"
         };
 
-       
+        // Act
         var result = await controller.Login(request);
 
-        
+        // Assert
         Assert.IsType<UnauthorizedObjectResult>(result);
     }
 }
