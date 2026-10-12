@@ -104,12 +104,12 @@ public class UnitTest1
 
         var eventItem = new Event
         {
-            EventName = "Test Marathon Event",
+            EventName = "Test Running Event",
             Description = "Testing event creation",
             EventDate = DateTime.UtcNow.AddDays(10),
             Location = "Cape Town",
             Distance = 10,
-            EventType = "marathon"
+            EventType = "run"
         };
 
         var result = await controller.CreateEvent(eventItem);
@@ -123,8 +123,8 @@ public class UnitTest1
             .FirstOrDefaultAsync();
 
         Assert.NotNull(savedEvent);
-        Assert.Equal("Test Marathon Event", savedEvent.EventName);
-        Assert.Equal("marathon", savedEvent.EventType);
+        Assert.Equal("Test Running Event", savedEvent.EventName);
+        Assert.Equal("run", savedEvent.EventType);
         Assert.Equal(1, savedEvent.OrganiserId);
     }
 
@@ -179,6 +179,69 @@ public class UnitTest1
 
         Assert.NotNull(savedEvent);
         Assert.Equal(1, savedEvent.OrganiserId);
+    }
+
+
+    // =========================================================
+    // EVENT TYPE VALIDATION TEST
+    // =========================================================
+
+    [Fact]
+    public async Task CreateEvent_ReturnsBadRequest_WhenEventTypeIsInvalid()
+    {
+        using var context = CreateContext();
+
+        var controller = new EventController(context);
+
+        var claims = new List<Claim>
+        {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                "1"
+            ),
+            new Claim(
+                ClaimTypes.Role,
+                "Organiser"
+            )
+        };
+
+        var identity = new ClaimsIdentity(
+            claims,
+            "TestAuthentication"
+        );
+
+        var principal = new ClaimsPrincipal(identity);
+
+        controller.ControllerContext =
+            new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = principal
+                }
+            };
+
+        var eventItem = new Event
+        {
+            EventName = "Invalid Event Type Test",
+            Description = "Testing invalid event type validation",
+            EventDate = DateTime.UtcNow.AddDays(10),
+            Location = "Cape Town",
+            Distance = 10,
+            EventType = "swim"
+        };
+
+        var result = await controller.CreateEvent(eventItem);
+
+        var badRequestResult =
+            Assert.IsType<BadRequestObjectResult>(result);
+
+        Assert.NotNull(badRequestResult.Value);
+
+        var savedEvent = await context.Events
+            .FirstOrDefaultAsync();
+
+        Assert.Null(savedEvent);
     }
 
 
@@ -307,7 +370,7 @@ public class UnitTest1
 
 
     // =========================================================
-    // NEW CATEGORY OWNERSHIP TEST
+    // CATEGORY OWNERSHIP TEST
     // =========================================================
 
     [Fact]
@@ -316,7 +379,6 @@ public class UnitTest1
         // Arrange
         using var context = CreateContext();
 
-        // Event belongs to organiser 1
         context.Events.Add(new Event
         {
             EventId = 1,
@@ -334,7 +396,6 @@ public class UnitTest1
 
         var controller = new CategoryController(context);
 
-        // Authenticate as organiser 2
         var claims = new List<Claim>
         {
             new Claim(
@@ -378,7 +439,6 @@ public class UnitTest1
         // Assert
         Assert.IsType<ForbidResult>(result);
 
-        // Confirm no category was created
         var savedCategory = await context.Categories
             .FirstOrDefaultAsync();
 
@@ -568,13 +628,17 @@ public class UnitTest1
         Assert.IsType<UnauthorizedObjectResult>(result);
     }
 
+
+    // =========================================================
+    // ENROLMENT TESTS
+    // =========================================================
+
     [Fact]
     public async Task CreateEnrolment_ReturnsCreated_WhenValidParticipantEnrols()
     {
         // Arrange
         using var context = CreateContext();
 
-        // Create an event
         context.Events.Add(new Event
         {
             EventId = 1,
@@ -588,7 +652,6 @@ public class UnitTest1
             CreatedAt = DateTime.UtcNow
         });
 
-        // Create a category for the event
         context.Categories.Add(new Category
         {
             CategoryId = 1,
@@ -601,21 +664,19 @@ public class UnitTest1
 
         await context.SaveChangesAsync();
 
-        // Create controller
         var controller = new EnrolmentController(context);
 
-        // Authenticate as Participant ID 2
         var claims = new List<Claim>
-    {
-        new Claim(
-            ClaimTypes.NameIdentifier,
-            "2"
-        ),
-        new Claim(
-            ClaimTypes.Role,
-            "Participant"
-        )
-    };
+        {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                "2"
+            ),
+            new Claim(
+                ClaimTypes.Role,
+                "Participant"
+            )
+        };
 
         var identity = new ClaimsIdentity(
             claims,
@@ -633,7 +694,6 @@ public class UnitTest1
                 }
             };
 
-        // Create enrolment request
         var request =
             new EnrolmentController.CreateEnrolmentRequest
             {
@@ -650,7 +710,6 @@ public class UnitTest1
 
         Assert.NotNull(createdResult.Value);
 
-        // Confirm enrolment was saved
         var savedEnrolment =
             await context.Enrolments.FirstOrDefaultAsync();
 
@@ -662,13 +721,13 @@ public class UnitTest1
         Assert.Equal("Registered", savedEnrolment.Status);
     }
 
+
     [Fact]
     public async Task CreateEnrolment_ReturnsConflict_WhenParticipantAlreadyEnrolled()
     {
         // Arrange
         using var context = CreateContext();
 
-        // Create an event
         context.Events.Add(new Event
         {
             EventId = 1,
@@ -682,7 +741,6 @@ public class UnitTest1
             CreatedAt = DateTime.UtcNow
         });
 
-        // Create a category for the event
         context.Categories.Add(new Category
         {
             CategoryId = 1,
@@ -693,7 +751,6 @@ public class UnitTest1
             Distance = 10
         });
 
-        // Create an existing enrolment for Participant 2
         context.Enrolments.Add(new Enrolment
         {
             EnrolmentId = 1,
@@ -706,21 +763,19 @@ public class UnitTest1
 
         await context.SaveChangesAsync();
 
-        // Create controller
         var controller = new EnrolmentController(context);
 
-        // Authenticate as the same participant
         var claims = new List<Claim>
-    {
-        new Claim(
-            ClaimTypes.NameIdentifier,
-            "2"
-        ),
-        new Claim(
-            ClaimTypes.Role,
-            "Participant"
-        )
-    };
+        {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                "2"
+            ),
+            new Claim(
+                ClaimTypes.Role,
+                "Participant"
+            )
+        };
 
         var identity = new ClaimsIdentity(
             claims,
@@ -738,7 +793,6 @@ public class UnitTest1
                 }
             };
 
-        // Create another enrolment request
         var request =
             new EnrolmentController.CreateEnrolmentRequest
             {
@@ -752,7 +806,6 @@ public class UnitTest1
         // Assert
         Assert.IsType<ConflictObjectResult>(result);
 
-        // Confirm that no second enrolment was created
         var enrolmentCount =
             await context.Enrolments.CountAsync();
 
