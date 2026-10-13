@@ -61,14 +61,12 @@ The system is designed around the RaceDay functional requirements and uses authe
 
 ### Events
 
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| GET | `/api/events` | Organiser / Participant | View available events |
-| GET | `/api/events/{id}` | Organiser / Participant | View one event |
-| POST | `/api/events` | Organiser | Create an event |
-| PUT | `/api/events/{id}` | Organiser | Update an owned event |
-| DELETE | `/api/events/{id}` | Organiser | Delete an owned event |
-| GET | `/api/events/my-events` | Organiser | View events created by the logged-in organiser |
+| GET | `/api/Event` | Organiser / Participant | View available events |
+| GET | `/api/Event/{id}` | Organiser / Participant | View one event |
+| POST | `/api/Event` | Organiser | Create an event |
+| PUT | `/api/Event/{id}` | Organiser | Update an owned event |
+| DELETE | `/api/Event/{id}` | Organiser | Delete an owned event |
+| GET | `/api/Event/my-events` | Organiser | View events created by the logged-in organiser |
 
 Event types are restricted to:
 
