@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿
+using System.ComponentModel.DataAnnotations;
 
 namespace RaceDay.API.Models
 {
@@ -34,10 +35,29 @@ namespace RaceDay.API.Models
         [Required]
         public DateTime CreatedAt { get; set; }
 
+        // ==========================================
+        // AZURE BLOB STORAGE - EVENT IMAGE
+        // ==========================================
+
+        // Stores the Azure blob name, not a public URL.
+        // Example: events/3/unique-image-name.jpg
+        //
+        // Nullable so existing events can continue
+        // working without an uploaded image.
+
+        [MaxLength(500)]
+        public string? EventImageBlobName { get; set; }
+
+        // ==========================================
+        // NAVIGATION PROPERTIES
+        // ==========================================
+
         public User? Organiser { get; set; }
 
-        public ICollection<Category> Categories { get; set; } = new List<Category>();
+        public ICollection<Category> Categories { get; set; }
+            = new List<Category>();
 
-        public ICollection<Enrolment> Enrolments { get; set; } = new List<Enrolment>();
+        public ICollection<Enrolment> Enrolments { get; set; }
+            = new List<Enrolment>();
     }
 }
