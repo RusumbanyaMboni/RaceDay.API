@@ -1,225 +1,196 @@
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using RaceDay.API.Data;
+using RaceDay.API.Services;
 using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ==========================================
+// DATABASE CONFIGURATION
+// ==========================================
+
 builder.Services.AddDbContext<RaceDayDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("RaceDayConnection")
+        builder.Configuration.GetConnectionString(
+            "RaceDayConnection")
     ));
 
+// ==========================================
+// AZURE BLOB STORAGE CONFIGURATION
+// ==========================================
 
+// The connection string and container names are
+// loaded from configuration, including User Secrets.
+//
+// Required User Secrets:
+// AzureStorage:ConnectionString
+// AzureStorage:ProfilePicturesContainer
+// AzureStorage:EventImagesContainer
+
+builder.Services.AddSingleton<AzureBlobStorageService>();
+
+// ==========================================
+// JWT CONFIGURATION
+// ==========================================
 
 var jwtKey = builder.Configuration["Jwt:Key"];
-
-if (string.IsNullOrWhiteSpace(jwtKey))
-{
-    throw new InvalidOperationException(
-        "JWT key is missing. Add Jwt:Key to appsettings.json."
-    );
-}
-
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+if (string.IsNullOrWhiteSpace(jwtKey) ||
+    string.IsNullOrWhiteSpace(jwtIssuer) ||
+    string.IsNullOrWhiteSpace(jwtAudience))
+{
+    throw new InvalidOperationException(
+        "JWT configuration is missing. " +
+        "Check Jwt:Key, Jwt:Issuer and Jwt:Audience.");
+}
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-           
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
 
-            ValidateIssuerSigningKey = true,
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtKey)),
 
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey)
-            ),
+                ValidateIssuer = true,
+                ValidIssuer = jwtIssuer,
 
+                ValidateAudience = true,
+                ValidAudience = jwtAudience,
 
-            
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero,
 
-            ValidateIssuer = true,
+                // Use the role name instead of numeric RoleId.
+                RoleClaimType = ClaimTypes.Role,
 
-            ValidIssuer = jwtIssuer,
-
-
-           
-            ValidateAudience = true,
-
-            ValidAudience = jwtAudience,
-
-
-           
-
-            ValidateLifetime = true,
-
-            ClockSkew = TimeSpan.Zero,
-
-
-            
-            RoleClaimType = "RoleId",
-
-
-            NameClaimType = ClaimTypes.Name
-        };
-
+                NameClaimType = ClaimTypes.Name
+            };
 
         options.Events = new JwtBearerEvents
         {
-           
-
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine(
-                    "========================================"
-                );
-
-                Console.WriteLine(
-                    "JWT AUTHENTICATION FAILED"
-                );
-
-                Console.WriteLine(
-                    "ERROR: " + context.Exception.Message
-                );
-
-                Console.WriteLine(
-                    "========================================"
-                );
+                if (builder.Environment.IsDevelopment())
+                {
+                    Console.WriteLine(
+                        "JWT AUTHENTICATION FAILED: " +
+                        context.Exception.Message);
+                }
 
                 return Task.CompletedTask;
             },
 
-
-          
-
             OnTokenValidated = context =>
             {
-                Console.WriteLine(
-                    "========================================"
-                );
+                if (builder.Environment.IsDevelopment())
+                {
+                    var role = context.Principal?
+                        .FindFirst(ClaimTypes.Role)?.Value;
 
-                Console.WriteLine(
-                    "JWT TOKEN VALIDATED"
-                );
+                    var roleId = context.Principal?
+                        .FindFirst("RoleId")?.Value;
 
+                    Console.WriteLine(
+                        "JWT TOKEN VALIDATED");
 
-                
-                var roleId = context.Principal?
-                    .FindFirst("RoleId")?.Value;
+                    Console.WriteLine(
+                        "JWT ROLE: " + role);
 
-                Console.WriteLine(
-                    "JWT ROLE ID: " + roleId
-                );
-
-
-              
-                var userId = context.Principal?
-                    .FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                Console.WriteLine(
-                    "JWT USER ID: " + userId
-                );
-
-
-               
-                var email = context.Principal?
-                    .FindFirst(ClaimTypes.Email)?.Value;
-
-                Console.WriteLine(
-                    "JWT EMAIL: " + email
-                );
-
-
-                Console.WriteLine(
-                    "========================================"
-                );
+                    Console.WriteLine(
+                        "JWT ROLE ID: " + roleId);
+                }
 
                 return Task.CompletedTask;
             }
         };
     });
 
-
-
+// ==========================================
+// AUTHORISATION
+// ==========================================
 
 builder.Services.AddAuthorization();
 
-
-
+// ==========================================
+// CONTROLLERS
+// ==========================================
 
 builder.Services.AddControllers();
 
-
+// ==========================================
+// SWAGGER CONFIGURATION
+// ==========================================
 
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
-  
-
     options.AddSecurityDefinition(
         "Bearer",
-        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        new OpenApiSecurityScheme
         {
             Name = "Authorization",
-
-            Type =
-                Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-
+            Type = SecuritySchemeType.Http,
             Scheme = "bearer",
-
             BearerFormat = "JWT",
-
-            In =
-                Microsoft.OpenApi.Models.ParameterLocation.Header,
-
-            Description =
-                "Enter your JWT token."
+            In = ParameterLocation.Header,
+            Description = "Enter your JWT token."
         });
 
-
-
     options.AddSecurityRequirement(
-        new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        new OpenApiSecurityRequirement
         {
             {
-                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                new OpenApiSecurityScheme
                 {
-                    Reference =
-                        new Microsoft.OpenApi.Models.OpenApiReference
-                        {
-                            Type =
-                                Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-
-                            Id = "Bearer"
-                        }
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
                 },
-
                 Array.Empty<string>()
             }
         });
 });
 
-
+// ==========================================
+// BUILD APPLICATION
+// ==========================================
 
 var app = builder.Build();
 
-
-
+// ==========================================
+// SWAGGER
+// ==========================================
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// ==========================================
+// HTTP PIPELINE
+// ==========================================
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 

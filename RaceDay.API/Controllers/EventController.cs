@@ -1,8 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Azure;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RaceDay.API.Data;
 using RaceDay.API.Models;
+using RaceDay.API.Services;
 using System.Security.Claims;
 
 namespace RaceDay.API.Controllers
@@ -12,16 +16,26 @@ namespace RaceDay.API.Controllers
     [Authorize]
     public class EventController : ControllerBase
     {
-        private readonly RaceDayDbContext _context;
+        private const string EventImagesContainer = "event-images";
 
-        public EventController(RaceDayDbContext context)
+        private readonly RaceDayDbContext _context;
+        private readonly AzureBlobStorageService _blobStorageService;
+        private readonly ILogger<EventController> _logger;
+
+        public EventController(
+            RaceDayDbContext context,
+            AzureBlobStorageService blobStorageService,
+            ILogger<EventController> logger)
         {
             _context = context;
+            _blobStorageService = blobStorageService;
+            _logger = logger;
         }
 
         // =========================================================
         // GET: api/Event
         // =========================================================
+
         [HttpGet]
         public async Task<IActionResult> GetEvents()
         {
@@ -36,17 +50,23 @@ namespace RaceDay.API.Controllers
                     e.Location,
                     e.Distance,
                     e.EventType,
-                    e.CreatedAt
+                    e.CreatedAt,
+
+                    // Azure image information
+                    e.EventImageBlobName,
+                    HasEventImage =
+                        e.EventImageBlobName != null &&
+                        e.EventImageBlobName != ""
                 })
                 .ToListAsync();
 
             return Ok(events);
         }
 
-
         // =========================================================
         // GET: api/Event/1
         // =========================================================
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEvent(int id)
         {
@@ -62,7 +82,13 @@ namespace RaceDay.API.Controllers
                     e.Location,
                     e.Distance,
                     e.EventType,
-                    e.CreatedAt
+                    e.CreatedAt,
+
+                    // Azure image information
+                    e.EventImageBlobName,
+                    HasEventImage =
+                        e.EventImageBlobName != null &&
+                        e.EventImageBlobName != ""
                 })
                 .FirstOrDefaultAsync();
 
@@ -74,12 +100,11 @@ namespace RaceDay.API.Controllers
             return Ok(eventItem);
         }
 
-
         // =========================================================
         // POST: api/Event
-        // =========================================================
         // Only Organisers can create events.
         // =========================================================
+
         [Authorize(Roles = "Organiser")]
         [HttpPost]
         public async Task<IActionResult> CreateEvent(
@@ -90,11 +115,13 @@ namespace RaceDay.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            // =====================================================
-            // VALIDATE EVENT TYPE
-            // =====================================================
-            // Only run, walk and cycle are allowed.
-            var validEventTypes = new[] { "run", "walk", "cycle" };
+            // Validate event type.
+            var validEventTypes = new[]
+            {
+                "run",
+                "walk",
+                "cycle"
+            };
 
             if (string.IsNullOrWhiteSpace(eventItem.EventType) ||
                 !validEventTypes.Contains(
@@ -103,29 +130,32 @@ namespace RaceDay.API.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "Event type must be one of: run, walk, or cycle."
+                    message =
+                        "Event type must be one of: run, walk, or cycle."
                 });
             }
 
-            // Normalize the value before saving it.
             eventItem.EventType =
                 eventItem.EventType.Trim().ToLowerInvariant();
 
-            // Get logged-in user's ID from JWT
             var userId = GetCurrentUserId();
 
             if (userId == null)
             {
-                return Unauthorized("User ID could not be determined.");
+                return Unauthorized(
+                    "User ID could not be determined.");
             }
 
-            // IMPORTANT:
-            // Do not trust organiserId supplied by the client.
-            // Always use the authenticated user's ID.
+            // Never trust organiser ownership from the request.
             eventItem.OrganiserId = userId.Value;
 
-            // Created by the server
+            // Server-generated creation date.
             eventItem.CreatedAt = DateTime.UtcNow;
+
+            // Images must be uploaded separately using
+            // POST /api/Event/{id}/image.
+            // Do not accept a blob reference from the client.
+            eventItem.EventImageBlobName = null;
 
             _context.Events.Add(eventItem);
 
@@ -141,12 +171,11 @@ namespace RaceDay.API.Controllers
                 });
         }
 
-
         // =========================================================
         // PUT: api/Event/1
+        // Only the event's Organiser can update it.
         // =========================================================
-        // Only Organisers can update events.
-        // =========================================================
+
         [Authorize(Roles = "Organiser")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateEvent(
@@ -163,11 +192,12 @@ namespace RaceDay.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            // =====================================================
-            // VALIDATE EVENT TYPE
-            // =====================================================
-            // Only run, walk and cycle are allowed.
-            var validEventTypes = new[] { "run", "walk", "cycle" };
+            var validEventTypes = new[]
+            {
+                "run",
+                "walk",
+                "cycle"
+            };
 
             if (string.IsNullOrWhiteSpace(eventItem.EventType) ||
                 !validEventTypes.Contains(
@@ -176,23 +206,22 @@ namespace RaceDay.API.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "Event type must be one of: run, walk, or cycle."
+                    message =
+                        "Event type must be one of: run, walk, or cycle."
                 });
             }
 
-            // Normalize the value before saving it.
             eventItem.EventType =
                 eventItem.EventType.Trim().ToLowerInvariant();
 
-            // Get logged-in user's ID
             var userId = GetCurrentUserId();
 
             if (userId == null)
             {
-                return Unauthorized("User ID could not be determined.");
+                return Unauthorized(
+                    "User ID could not be determined.");
             }
 
-            // Find existing event
             var existingEvent = await _context.Events
                 .FirstOrDefaultAsync(e => e.EventId == id);
 
@@ -201,16 +230,13 @@ namespace RaceDay.API.Controllers
                 return NotFound("Event not found.");
             }
 
-            // =====================================================
-            // SECURITY CHECK
-            // =====================================================
-            // Only the organiser who owns the event can update it.
+            // Only the owner may update this event.
             if (existingEvent.OrganiserId != userId.Value)
             {
                 return Forbid();
             }
 
-            // Update event information
+            // Update normal event information.
             existingEvent.EventName = eventItem.EventName;
             existingEvent.Description = eventItem.Description;
             existingEvent.EventDate = eventItem.EventDate;
@@ -218,9 +244,12 @@ namespace RaceDay.API.Controllers
             existingEvent.Distance = eventItem.Distance;
             existingEvent.EventType = eventItem.EventType;
 
-            // IMPORTANT:
-            // OrganiserId is deliberately NOT updated.
-            // Ownership cannot be transferred through this endpoint.
+            // Do not change:
+            // OrganiserId
+            // CreatedAt
+            // EventImageBlobName
+            //
+            // Event images use dedicated endpoints.
 
             await _context.SaveChangesAsync();
 
@@ -230,25 +259,23 @@ namespace RaceDay.API.Controllers
             });
         }
 
-
         // =========================================================
         // DELETE: api/Event/1
+        // Only the event's Organiser can delete it.
         // =========================================================
-        // Only Organisers can delete events.
-        // =========================================================
+
         [Authorize(Roles = "Organiser")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEvent(int id)
         {
-            // Get logged-in user's ID
             var userId = GetCurrentUserId();
 
             if (userId == null)
             {
-                return Unauthorized("User ID could not be determined.");
+                return Unauthorized(
+                    "User ID could not be determined.");
             }
 
-            // Find event
             var eventItem = await _context.Events
                 .FirstOrDefaultAsync(e => e.EventId == id);
 
@@ -257,71 +284,81 @@ namespace RaceDay.API.Controllers
                 return NotFound("Event not found.");
             }
 
-            // =====================================================
-            // SECURITY CHECK
-            // =====================================================
-            // Only the organiser who owns the event can delete it.
             if (eventItem.OrganiserId != userId.Value)
             {
                 return Forbid();
             }
 
-            // =====================================================
-            // FIND RELATED RECORDS
-            // =====================================================
+            // Keep a copy for Azure cleanup after
+            // SQL Server deletion succeeds.
+            var imageBlobName = eventItem.EventImageBlobName;
 
-            // Find all enrolments belonging to this event
+            // Find related enrolments.
             var enrolments = await _context.Enrolments
                 .Where(e => e.EventId == id)
                 .ToListAsync();
 
-            // Get enrolment IDs
             var enrolmentIds = enrolments
                 .Select(e => e.EnrolmentId)
                 .ToList();
 
-            // Find results belonging to those enrolments
+            // Find results for those enrolments.
             var results = new List<Result>();
 
             if (enrolmentIds.Count > 0)
             {
                 results = await _context.Results
-                    .Where(r => enrolmentIds.Contains(r.EnrolmentId))
+                    .Where(r =>
+                        enrolmentIds.Contains(r.EnrolmentId))
                     .ToListAsync();
             }
 
-            // Find categories belonging to this event
+            // Find event categories.
             var categories = await _context.Categories
                 .Where(c => c.EventId == id)
                 .ToListAsync();
 
-
-            // =====================================================
-            // DELETE IN CORRECT ORDER
-            // =====================================================
-
-            // 1. Delete Results first
+            // Delete records in the required order.
             if (results.Count > 0)
             {
                 _context.Results.RemoveRange(results);
             }
 
-            // 2. Delete Enrolments second
             if (enrolments.Count > 0)
             {
                 _context.Enrolments.RemoveRange(enrolments);
             }
 
-            // 3. Delete Categories third
             if (categories.Count > 0)
             {
                 _context.Categories.RemoveRange(categories);
             }
 
-            // 4. Delete Event last
             _context.Events.Remove(eventItem);
 
             await _context.SaveChangesAsync();
+
+            // After SQL Server confirms deletion,
+            // attempt to clean up the Azure image.
+            if (!string.IsNullOrWhiteSpace(imageBlobName))
+            {
+                try
+                {
+                    await _blobStorageService.DeleteImageAsync(
+                        EventImagesContainer,
+                        imageBlobName);
+                }
+                catch (RequestFailedException ex)
+                {
+                    // The event is already deleted from SQL Server.
+                    // Log the orphaned blob for later cleanup.
+                    _logger.LogError(
+                        ex,
+                        "Event {EventId} was deleted, but Azure blob {BlobName} could not be removed.",
+                        id,
+                        imageBlobName);
+                }
+            }
 
             return Ok(new
             {
@@ -329,6 +366,327 @@ namespace RaceDay.API.Controllers
             });
         }
 
+        // =========================================================
+        // POST: api/Event/1/image
+        // Upload or replace an event image.
+        //
+        // Only the organiser who owns the event
+        // can upload or replace its image.
+        // =========================================================
+
+        [Authorize(Roles = "Organiser")]
+        [HttpPost("{id}/image")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        public async Task<IActionResult> UploadEventImage(
+            int id,
+            IFormFile file)
+        {
+            var userId = GetCurrentUserId();
+
+            if (userId == null)
+            {
+                return Unauthorized(
+                    "User ID could not be determined.");
+            }
+
+            var eventItem = await _context.Events
+                .FirstOrDefaultAsync(e => e.EventId == id);
+
+            if (eventItem == null)
+            {
+                return NotFound(new
+                {
+                    message = "Event not found."
+                });
+            }
+
+            // Ownership check.
+            if (eventItem.OrganiserId != userId.Value)
+            {
+                return Forbid();
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new
+                {
+                    message = "Please select an image."
+                });
+            }
+
+            var oldBlobName = eventItem.EventImageBlobName;
+            string? newBlobName = null;
+
+            try
+            {
+                // Existing Azure service validates
+                // image size, extension and signature.
+                newBlobName =
+                    await _blobStorageService.UploadEventImageAsync(
+                        file,
+                        id);
+
+                // Store the private blob reference in SQL Server.
+                eventItem.EventImageBlobName = newBlobName;
+
+                await _context.SaveChangesAsync();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+            catch (RequestFailedException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Azure upload failed for event {EventId}.",
+                    id);
+
+                return StatusCode(503, new
+                {
+                    message =
+                        "Azure Storage is currently unavailable."
+                });
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Database update failed after image upload for event {EventId}.",
+                    id);
+
+                // Prevent an unnecessary Azure blob
+                // if the database update failed.
+                if (!string.IsNullOrWhiteSpace(newBlobName))
+                {
+                    try
+                    {
+                        await _blobStorageService.DeleteImageAsync(
+                            EventImagesContainer,
+                            newBlobName);
+                    }
+                    catch (RequestFailedException cleanupException)
+                    {
+                        _logger.LogError(
+                            cleanupException,
+                            "Could not clean up uploaded blob {BlobName}.",
+                            newBlobName);
+                    }
+                }
+
+                return StatusCode(500, new
+                {
+                    message =
+                        "Unable to save the event image information."
+                });
+            }
+
+            // If the image was replaced, remove the old blob.
+            if (!string.IsNullOrWhiteSpace(oldBlobName) &&
+                oldBlobName != newBlobName)
+            {
+                try
+                {
+                    await _blobStorageService.DeleteImageAsync(
+                        EventImagesContainer,
+                        oldBlobName);
+                }
+                catch (RequestFailedException ex)
+                {
+                    // The new image is already saved.
+                    _logger.LogWarning(
+                        ex,
+                        "Event {EventId} image was replaced, but old blob {BlobName} could not be deleted.",
+                        id,
+                        oldBlobName);
+                }
+            }
+
+            return Ok(new
+            {
+                message =
+                    "Event image uploaded successfully.",
+                eventId = id,
+                hasEventImage = true
+            });
+        }
+
+        // =========================================================
+        // GET: api/Event/1/image
+        // Retrieve an image from private Azure Blob Storage.
+        //
+        // Any authenticated user may view the image.
+        // =========================================================
+
+        [HttpGet("{id}/image")]
+        [ResponseCache(
+            Duration = 0,
+            Location = ResponseCacheLocation.None,
+            NoStore = true)]
+        public async Task<IActionResult> GetEventImage(int id)
+        {
+            var eventItem = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.EventId == id)
+                .Select(e => new
+                {
+                    e.EventImageBlobName
+                })
+                .FirstOrDefaultAsync();
+
+            if (eventItem == null)
+            {
+                return NotFound(new
+                {
+                    message = "Event not found."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                eventItem.EventImageBlobName))
+            {
+                return NotFound(new
+                {
+                    message = "This event has no image."
+                });
+            }
+
+            try
+            {
+                var image =
+                    await _blobStorageService.DownloadImageAsync(
+                        EventImagesContainer,
+                        eventItem.EventImageBlobName);
+
+                Response.Headers.CacheControl =
+                    "private, no-store";
+
+                return File(
+                    image.Content,
+                    image.ContentType);
+            }
+            catch (RequestFailedException ex)
+                when (ex.Status == 404)
+            {
+                return NotFound(new
+                {
+                    message =
+                        "The event image was not found in Azure Storage."
+                });
+            }
+            catch (RequestFailedException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unable to retrieve image for event {EventId}.",
+                    id);
+
+                return StatusCode(503, new
+                {
+                    message =
+                        "Unable to retrieve the event image."
+                });
+            }
+        }
+
+        // =========================================================
+        // DELETE: api/Event/1/image
+        // Remove an event image.
+        //
+        // Only the organiser who owns the event
+        // can remove its image.
+        // =========================================================
+
+        [Authorize(Roles = "Organiser")]
+        [HttpDelete("{id}/image")]
+        public async Task<IActionResult> DeleteEventImage(int id)
+        {
+            var userId = GetCurrentUserId();
+
+            if (userId == null)
+            {
+                return Unauthorized(
+                    "User ID could not be determined.");
+            }
+
+            var eventItem = await _context.Events
+                .FirstOrDefaultAsync(e => e.EventId == id);
+
+            if (eventItem == null)
+            {
+                return NotFound(new
+                {
+                    message = "Event not found."
+                });
+            }
+
+            if (eventItem.OrganiserId != userId.Value)
+            {
+                return Forbid();
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                eventItem.EventImageBlobName))
+            {
+                return NotFound(new
+                {
+                    message = "This event has no image to remove."
+                });
+            }
+
+            var blobName = eventItem.EventImageBlobName;
+
+            try
+            {
+                // First remove the Azure blob.
+                await _blobStorageService.DeleteImageAsync(
+                    EventImagesContainer,
+                    blobName);
+
+                // Then remove its SQL Server reference.
+                eventItem.EventImageBlobName = null;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message =
+                        "Event image removed successfully.",
+                    eventId = id,
+                    hasEventImage = false
+                });
+            }
+            catch (RequestFailedException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unable to delete Azure image for event {EventId}.",
+                    id);
+
+                return StatusCode(503, new
+                {
+                    message =
+                        "Unable to remove the image from Azure Storage."
+                });
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Database update failed after deleting the image for event {EventId}.",
+                    id);
+
+                return StatusCode(500, new
+                {
+                    message =
+                        "The image was removed from storage, but the database could not be updated."
+                });
+            }
+        }
 
         // =========================================================
         // GET CURRENT USER ID FROM JWT

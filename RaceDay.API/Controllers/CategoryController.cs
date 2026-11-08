@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RaceDay.API.Data;
@@ -19,15 +20,23 @@ namespace RaceDay.API.Controllers
             _context = context;
         }
 
-        // =========================================================
+        // ==========================================
         // GET CATEGORIES FOR AN EVENT
-        // Organizers and Participants can view categories
-        // GET: /api/events/{eventId}/categories
-        // =========================================================
+        // Organiser and Participant
+        // GET /api/events/{eventId}/categories
+        // ==========================================
+
         [HttpGet("events/{eventId}/categories")]
-        [Authorize(Roles = "1,2")]
-        public async Task<IActionResult> GetEventCategories(int eventId)
+        [Authorize(Roles = "Organiser,Participant")]
+        public async Task<IActionResult> GetEventCategories(
+            int eventId)
         {
+            if (eventId <= 0)
+                return BadRequest(new
+                {
+                    message = "Invalid event ID."
+                });
+
             var eventExists = await _context.Events
                 .AnyAsync(e => e.EventId == eventId);
 
@@ -40,7 +49,10 @@ namespace RaceDay.API.Controllers
             }
 
             var categories = await _context.Categories
+                .AsNoTracking()
                 .Where(c => c.EventId == eventId)
+                .OrderBy(c => c.Distance)
+                .ThenBy(c => c.CategoryName)
                 .Select(c => new
                 {
                     c.CategoryId,
@@ -55,16 +67,24 @@ namespace RaceDay.API.Controllers
             return Ok(categories);
         }
 
-        // =========================================================
+        // ==========================================
         // GET CATEGORY BY ID
-        // Organizers and Participants can view a category
-        // GET: /api/categories/{id}
-        // =========================================================
+        // Organiser and Participant
+        // GET /api/categories/{id}
+        // ==========================================
+
         [HttpGet("categories/{id}")]
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Organiser,Participant")]
         public async Task<IActionResult> GetCategory(int id)
         {
+            if (id <= 0)
+                return BadRequest(new
+                {
+                    message = "Invalid category ID."
+                });
+
             var category = await _context.Categories
+                .AsNoTracking()
                 .Where(c => c.CategoryId == id)
                 .Select(c => new
                 {
@@ -88,76 +108,69 @@ namespace RaceDay.API.Controllers
             return Ok(category);
         }
 
-        // =========================================================
+        // ==========================================
         // CREATE CATEGORY
-        // Organizer only
-        // POST: /api/events/{eventId}/categories
-        // =========================================================
+        // Organiser only
+        // POST /api/events/{eventId}/categories
+        // ==========================================
+
         [HttpPost("events/{eventId}/categories")]
-        [Authorize(Roles = "1")]
+        [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> CreateCategory(
             int eventId,
-            Category category)
+            [FromBody] Category category)
         {
-            var organizerId = GetCurrentUserId();
+            if (eventId <= 0)
+                return BadRequest(new
+                {
+                    message = "Invalid event ID."
+                });
 
-            if (organizerId == null)
-            {
+            if (category == null)
+                return BadRequest(new
+                {
+                    message = "Category information is required."
+                });
+
+            var organiserId = GetCurrentUserId();
+
+            if (organiserId == null)
                 return Unauthorized(new
                 {
-                    message = "Unable to identify the authenticated organizer."
+                    message = "Unable to identify the authenticated organiser."
                 });
-            }
 
-            // Check that the event exists
             var eventItem = await _context.Events
+                .AsNoTracking()
                 .FirstOrDefaultAsync(e => e.EventId == eventId);
 
             if (eventItem == null)
-            {
                 return NotFound(new
                 {
                     message = "Event not found."
                 });
-            }
 
-            // Check event ownership
-            if (eventItem.OrganiserId != organizerId.Value)
-            {
+            // Only the owning Organiser can add categories.
+            if (eventItem.OrganiserId != organiserId.Value)
                 return Forbid();
-            }
 
-            // Basic validation
-            if (string.IsNullOrWhiteSpace(category.CategoryName))
-            {
+            var validationError = ValidateCategory(category);
+
+            if (validationError != null)
                 return BadRequest(new
                 {
-                    message = "Category name is required."
+                    message = validationError
                 });
-            }
 
-            if (category.Distance <= 0)
-            {
-                return BadRequest(new
-                {
-                    message = "Category distance must be greater than zero."
-                });
-            }
-
-            if (category.MinimumAge.HasValue &&
-                category.MaximumAge.HasValue &&
-                category.MinimumAge > category.MaximumAge)
-            {
-                return BadRequest(new
-                {
-                    message = "Minimum age cannot be greater than maximum age."
-                });
-            }
-
-            // Route determines the EventId.
-            // Do not allow the request body to override it.
+            // The event ID comes from the URL, not the body.
             category.CategoryId = 0;
             category.EventId = eventId;
+            category.CategoryName = category.CategoryName.Trim();
+
+            // Prevent clients from adding related entities
+            // through the category creation request.
+            category.Event = null;
+            category.Enrolments = new List<Enrolment>();
 
             _context.Categories.Add(category);
 
@@ -181,85 +194,83 @@ namespace RaceDay.API.Controllers
                 });
         }
 
-        // =========================================================
+        // ==========================================
         // UPDATE CATEGORY
-        // Organizer only
-        // PUT: /api/categories/{id}
-        // =========================================================
+        // Organiser only
+        // PUT /api/categories/{id}
+        // ==========================================
+
         [HttpPut("categories/{id}")]
-        [Authorize(Roles = "1")]
+        [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> UpdateCategory(
             int id,
-            Category updatedCategory)
+            [FromBody] Category updatedCategory)
         {
-            var organizerId = GetCurrentUserId();
+            if (id <= 0)
+                return BadRequest(new
+                {
+                    message = "Invalid category ID."
+                });
 
-            if (organizerId == null)
-            {
+            if (updatedCategory == null)
+                return BadRequest(new
+                {
+                    message = "Category information is required."
+                });
+
+            var organiserId = GetCurrentUserId();
+
+            if (organiserId == null)
                 return Unauthorized(new
                 {
-                    message = "Unable to identify the authenticated organizer."
+                    message = "Unable to identify the authenticated organiser."
                 });
-            }
 
             var existingCategory = await _context.Categories
                 .FirstOrDefaultAsync(c => c.CategoryId == id);
 
             if (existingCategory == null)
-            {
                 return NotFound(new
                 {
                     message = "Category not found."
                 });
-            }
 
             var eventItem = await _context.Events
-                .FirstOrDefaultAsync(e => e.EventId == existingCategory.EventId);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e =>
+                    e.EventId == existingCategory.EventId);
 
             if (eventItem == null)
-            {
                 return NotFound(new
                 {
                     message = "Associated event not found."
                 });
-            }
 
-            // Only the owner of the event can modify its categories
-            if (eventItem.OrganiserId != organizerId.Value)
-            {
+            // Only the owner may update this category.
+            if (eventItem.OrganiserId != organiserId.Value)
                 return Forbid();
-            }
 
-            if (string.IsNullOrWhiteSpace(updatedCategory.CategoryName))
-            {
+            var validationError =
+                ValidateCategory(updatedCategory);
+
+            if (validationError != null)
                 return BadRequest(new
                 {
-                    message = "Category name is required."
+                    message = validationError
                 });
-            }
 
-            if (updatedCategory.Distance <= 0)
-            {
-                return BadRequest(new
-                {
-                    message = "Category distance must be greater than zero."
-                });
-            }
+            // Do not change CategoryId or EventId.
+            existingCategory.CategoryName =
+                updatedCategory.CategoryName.Trim();
 
-            if (updatedCategory.MinimumAge.HasValue &&
-                updatedCategory.MaximumAge.HasValue &&
-                updatedCategory.MinimumAge > updatedCategory.MaximumAge)
-            {
-                return BadRequest(new
-                {
-                    message = "Minimum age cannot be greater than maximum age."
-                });
-            }
+            existingCategory.MinimumAge =
+                updatedCategory.MinimumAge;
 
-            existingCategory.CategoryName = updatedCategory.CategoryName;
-            existingCategory.MinimumAge = updatedCategory.MinimumAge;
-            existingCategory.MaximumAge = updatedCategory.MaximumAge;
-            existingCategory.Distance = updatedCategory.Distance;
+            existingCategory.MaximumAge =
+                updatedCategory.MaximumAge;
+
+            existingCategory.Distance =
+                updatedCategory.Distance;
 
             await _context.SaveChangesAsync();
 
@@ -278,51 +289,66 @@ namespace RaceDay.API.Controllers
             });
         }
 
-        // =========================================================
+        // ==========================================
         // DELETE CATEGORY
-        // Organizer only
-        // DELETE: /api/categories/{id}
-        // =========================================================
+        // Organiser only
+        // DELETE /api/categories/{id}
+        // ==========================================
+
         [HttpDelete("categories/{id}")]
-        [Authorize(Roles = "1")]
+        [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var organizerId = GetCurrentUserId();
+            if (id <= 0)
+                return BadRequest(new
+                {
+                    message = "Invalid category ID."
+                });
 
-            if (organizerId == null)
-            {
+            var organiserId = GetCurrentUserId();
+
+            if (organiserId == null)
                 return Unauthorized(new
                 {
-                    message = "Unable to identify the authenticated organizer."
+                    message = "Unable to identify the authenticated organiser."
                 });
-            }
 
             var category = await _context.Categories
                 .FirstOrDefaultAsync(c => c.CategoryId == id);
 
             if (category == null)
-            {
                 return NotFound(new
                 {
                     message = "Category not found."
                 });
-            }
 
             var eventItem = await _context.Events
-                .FirstOrDefaultAsync(e => e.EventId == category.EventId);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e =>
+                    e.EventId == category.EventId);
 
             if (eventItem == null)
-            {
                 return NotFound(new
                 {
                     message = "Associated event not found."
                 });
-            }
 
-            // Only the organizer who owns the event can delete
-            if (eventItem.OrganiserId != organizerId.Value)
-            {
+            // Only the event owner may delete its categories.
+            if (eventItem.OrganiserId != organiserId.Value)
                 return Forbid();
+
+            // Avoid deleting categories that already
+            // have registered participants.
+            var hasEnrolments = await _context.Enrolments
+                .AnyAsync(e => e.CategoryId == id);
+
+            if (hasEnrolments)
+            {
+                return Conflict(new
+                {
+                    message =
+                        "This category has participant enrolments and cannot be deleted."
+                });
             }
 
             _context.Categories.Remove(category);
@@ -332,9 +358,49 @@ namespace RaceDay.API.Controllers
             return NoContent();
         }
 
-        // =========================================================
+        // ==========================================
+        // CATEGORY VALIDATION
+        // ==========================================
+
+        private static string? ValidateCategory(
+            Category category)
+        {
+            if (string.IsNullOrWhiteSpace(category.CategoryName))
+                return "Category name is required.";
+
+            if (category.CategoryName.Trim().Length > 100)
+                return "Category name cannot exceed 100 characters.";
+
+            if (category.Distance <= 0)
+                return "Category distance must be greater than zero.";
+
+            if (category.MinimumAge.HasValue &&
+                category.MinimumAge.Value < 0)
+            {
+                return "Minimum age cannot be negative.";
+            }
+
+            if (category.MaximumAge.HasValue &&
+                category.MaximumAge.Value < 0)
+            {
+                return "Maximum age cannot be negative.";
+            }
+
+            if (category.MinimumAge.HasValue &&
+                category.MaximumAge.HasValue &&
+                category.MinimumAge.Value >
+                category.MaximumAge.Value)
+            {
+                return "Minimum age cannot be greater than maximum age.";
+            }
+
+            return null;
+        }
+
+        // ==========================================
         // GET CURRENT USER ID FROM JWT
-        // =========================================================
+        // ==========================================
+
         private int? GetCurrentUserId()
         {
             var userIdClaim =
@@ -343,9 +409,7 @@ namespace RaceDay.API.Controllers
                 ?? User.FindFirst("UserId")?.Value;
 
             if (int.TryParse(userIdClaim, out int userId))
-            {
                 return userId;
-            }
 
             return null;
         }

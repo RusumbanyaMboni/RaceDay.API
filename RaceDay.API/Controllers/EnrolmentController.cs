@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RaceDay.API.Data;
@@ -19,105 +20,60 @@ namespace RaceDay.API.Controllers
             _context = context;
         }
 
-
-        // =========================================================
-        // POST: /api/events/{eventId}/enrolments
-        //
-        // Participant enrols in an event and selects a category.
-        //
-        // ROLE:
-        // 2 = Participant
-        //
-        // ParticipantId comes from JWT.
-        // EventId comes from route.
-        // CategoryId comes from request body.
-        // EnrolmentDate and Status are created by server.
-        // =========================================================
+        // ==========================================
+        // CREATE ENROLMENT
+        // POST /api/events/{eventId}/enrolments
+        // Participant only
+        // ==========================================
 
         [HttpPost("events/{eventId}/enrolments")]
-        [Authorize(Roles = "2")]
+        [Authorize(Roles = "Participant")]
         public async Task<IActionResult> CreateEnrolment(
             int eventId,
             [FromBody] CreateEnrolmentRequest request)
         {
-            // -----------------------------------------------------
-            // Validate request
-            // -----------------------------------------------------
-
-            if (request == null || request.CategoryId <= 0)
+            if (eventId <= 0 ||
+                request == null ||
+                request.CategoryId <= 0)
             {
                 return BadRequest(new
                 {
-                    message = "A valid categoryId is required."
+                    message = "A valid event and category are required."
                 });
             }
-
-
-            // -----------------------------------------------------
-            // Get logged-in participant ID from JWT
-            // -----------------------------------------------------
 
             var participantId = GetCurrentUserId();
 
             if (participantId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the authenticated participant."
-                });
-            }
-
-
-            // -----------------------------------------------------
-            // Check that event exists
-            // -----------------------------------------------------
+                return Unauthorized();
 
             var eventItem = await _context.Events
+                .AsNoTracking()
                 .FirstOrDefaultAsync(e => e.EventId == eventId);
 
             if (eventItem == null)
-            {
                 return NotFound(new
                 {
                     message = "Event not found."
                 });
-            }
-
-
-            // -----------------------------------------------------
-            // Check that category exists
-            // -----------------------------------------------------
 
             var category = await _context.Categories
+                .AsNoTracking()
                 .FirstOrDefaultAsync(c =>
                     c.CategoryId == request.CategoryId);
 
             if (category == null)
-            {
                 return NotFound(new
                 {
                     message = "Category not found."
                 });
-            }
-
-
-            // -----------------------------------------------------
-            // Category must belong to selected event
-            // -----------------------------------------------------
 
             if (category.EventId != eventId)
-            {
                 return BadRequest(new
                 {
                     message =
                         "The selected category does not belong to this event."
                 });
-            }
-
-
-            // -----------------------------------------------------
-            // Prevent duplicate enrolment
-            // -----------------------------------------------------
 
             var alreadyEnrolled = await _context.Enrolments
                 .AnyAsync(e =>
@@ -125,716 +81,357 @@ namespace RaceDay.API.Controllers
                     e.ParticipantId == participantId.Value);
 
             if (alreadyEnrolled)
-            {
                 return Conflict(new
                 {
-                    message =
-                        "You are already enrolled in this event."
+                    message = "You are already enrolled in this event."
                 });
-            }
 
-
-            // -----------------------------------------------------
-            // Create enrolment
-            // -----------------------------------------------------
-
-            var newEnrolment = new Enrolment
+            var enrolment = new Enrolment
             {
                 ParticipantId = participantId.Value,
-
                 EventId = eventId,
-
-                CategoryId = request.CategoryId,
-
+                CategoryId = category.CategoryId,
                 EnrolmentDate = DateTime.UtcNow,
-
                 Status = "Registered"
             };
 
-
-            // -----------------------------------------------------
-            // Save enrolment
-            // -----------------------------------------------------
-
-            _context.Enrolments.Add(newEnrolment);
+            _context.Enrolments.Add(enrolment);
 
             await _context.SaveChangesAsync();
 
-
-            // -----------------------------------------------------
-            // Return 201 Created
-            // -----------------------------------------------------
-
             return CreatedAtAction(
                 nameof(GetEnrolment),
-                new
-                {
-                    id = newEnrolment.EnrolmentId
-                },
+                new { id = enrolment.EnrolmentId },
                 new
                 {
                     message = "Enrolment created successfully.",
-
-                    enrolmentId =
-                        newEnrolment.EnrolmentId,
-
-                    participantId =
-                        newEnrolment.ParticipantId,
-
-                    eventId =
-                        newEnrolment.EventId,
-
-                    categoryId =
-                        newEnrolment.CategoryId,
-
-                    enrolmentDate =
-                        newEnrolment.EnrolmentDate,
-
-                    status =
-                        newEnrolment.Status
+                    enrolment.EnrolmentId,
+                    enrolment.ParticipantId,
+                    enrolment.EventId,
+                    enrolment.CategoryId,
+                    enrolment.EnrolmentDate,
+                    enrolment.Status
                 });
         }
 
-
-
-        // =========================================================
-        // GET: /api/enrolments/my-enrolments
-        //
-        // Participant can view their own enrolments only.
-        //
-        // ROLE:
-        // 2 = Participant
-        // =========================================================
+        // ==========================================
+        // MY ENROLMENTS
+        // GET /api/enrolments/my-enrolments
+        // Participant only
+        // ==========================================
 
         [HttpGet("enrolments/my-enrolments")]
-        [Authorize(Roles = "2")]
+        [Authorize(Roles = "Participant")]
         public async Task<IActionResult> GetMyEnrolments()
         {
             var participantId = GetCurrentUserId();
 
             if (participantId == null)
-            {
-                return Unauthorized(new
-                {
-                    message =
-                        "Unable to identify the authenticated participant."
-                });
-            }
-
+                return Unauthorized();
 
             var enrolments = await _context.Enrolments
-                .Where(e =>
-                    e.ParticipantId == participantId.Value)
-
+                .AsNoTracking()
+                .Where(e => e.ParticipantId == participantId.Value)
+                .OrderByDescending(e => e.EnrolmentDate)
                 .Select(e => new
                 {
                     e.EnrolmentId,
-
                     e.ParticipantId,
-
                     e.EventId,
-
-                    EventName =
-                        e.Event != null
-                            ? e.Event.EventName
-                            : null,
-
+                    EventName = e.Event != null
+                        ? e.Event.EventName
+                        : null,
                     e.CategoryId,
-
-                    CategoryName =
-                        e.Category != null
-                            ? e.Category.CategoryName
-                            : null,
-
+                    CategoryName = e.Category != null
+                        ? e.Category.CategoryName
+                        : null,
                     e.EnrolmentDate,
-
                     e.Status
                 })
-
                 .ToListAsync();
-
 
             return Ok(enrolments);
         }
 
-
-
-        // =========================================================
-        // GET: /api/enrolments/{id}
-        //
-        // Participant:
-        //      Can view their own enrolment.
-        //
-        // Organiser:
-        //      Can view enrolments belonging to their own event.
-        //
-        // ROLE:
-        // 1 = Organiser
-        // 2 = Participant
-        // =========================================================
+        // ==========================================
+        // GET ENROLMENT BY ID
+        // GET /api/enrolments/{id}
+        // Organiser and Participant
+        // ==========================================
 
         [HttpGet("enrolments/{id}")]
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Organiser,Participant")]
         public async Task<IActionResult> GetEnrolment(int id)
         {
-            var currentUserId = GetCurrentUserId();
+            var userId = GetCurrentUserId();
 
-            if (currentUserId == null)
-            {
-                return Unauthorized(new
-                {
-                    message =
-                        "Unable to identify the authenticated user."
-                });
-            }
-
+            if (userId == null)
+                return Unauthorized();
 
             var enrolment = await _context.Enrolments
-
+                .AsNoTracking()
                 .Include(e => e.Event)
-
                 .Include(e => e.Category)
-
-                .FirstOrDefaultAsync(
-                    e => e.EnrolmentId == id);
-
+                .FirstOrDefaultAsync(e => e.EnrolmentId == id);
 
             if (enrolment == null)
-            {
                 return NotFound(new
                 {
                     message = "Enrolment not found."
                 });
-            }
 
-
-            // -----------------------------------------------------
-            // Get RoleId from JWT
-            //
-            // 1 = Organiser
-            // 2 = Participant
-            // -----------------------------------------------------
-
-            var roleId =
-                User.FindFirst("RoleId")?.Value;
-
-
-            // =====================================================
-            // PARTICIPANT SECURITY CHECK
-            // =====================================================
-
-            if (roleId == "2")
+            if (User.IsInRole("Participant"))
             {
-                if (enrolment.ParticipantId !=
-                    currentUserId.Value)
-                {
+                if (enrolment.ParticipantId != userId.Value)
                     return Forbid();
-                }
             }
-
-
-            // =====================================================
-            // ORGANISER SECURITY CHECK
-            // =====================================================
-
-            if (roleId == "1")
+            else if (User.IsInRole("Organiser"))
             {
                 if (enrolment.Event == null ||
-                    enrolment.Event.OrganiserId !=
-                    currentUserId.Value)
-                {
+                    enrolment.Event.OrganiserId != userId.Value)
                     return Forbid();
-                }
             }
-
-
-            return Ok(new
-            {
-                enrolment.EnrolmentId,
-
-                enrolment.ParticipantId,
-
-                enrolment.EventId,
-
-                eventName =
-                    enrolment.Event?.EventName,
-
-                enrolment.CategoryId,
-
-                categoryName =
-                    enrolment.Category?.CategoryName,
-
-                enrolment.EnrolmentDate,
-
-                enrolment.Status
-            });
-        }
-
-
-
-        // =========================================================
-        // GET: /api/events/{eventId}/enrolments
-        //
-        // Organiser can view enrolments for their own event only.
-        //
-        // ROLE:
-        // 1 = Organiser
-        // =========================================================
-
-        [HttpGet("events/{eventId}/enrolments")]
-        [Authorize(Roles = "1")]
-        public async Task<IActionResult> GetEventEnrolments(
-            int eventId)
-        {
-            var organizerId = GetCurrentUserId();
-
-            if (organizerId == null)
-            {
-                return Unauthorized(new
-                {
-                    message =
-                        "Unable to identify the authenticated organizer."
-                });
-            }
-
-
-            // -----------------------------------------------------
-            // Check that event exists
-            // -----------------------------------------------------
-
-            var eventItem = await _context.Events
-                .FirstOrDefaultAsync(
-                    e => e.EventId == eventId);
-
-
-            if (eventItem == null)
-            {
-                return NotFound(new
-                {
-                    message = "Event not found."
-                });
-            }
-
-
-            // -----------------------------------------------------
-            // Organiser must own event
-            // -----------------------------------------------------
-
-            if (eventItem.OrganiserId !=
-                organizerId.Value)
+            else
             {
                 return Forbid();
             }
 
+            return Ok(new
+            {
+                enrolment.EnrolmentId,
+                enrolment.ParticipantId,
+                enrolment.EventId,
+                EventName = enrolment.Event?.EventName,
+                enrolment.CategoryId,
+                CategoryName = enrolment.Category?.CategoryName,
+                enrolment.EnrolmentDate,
+                enrolment.Status
+            });
+        }
 
-            // -----------------------------------------------------
-            // Get event enrolments
-            // -----------------------------------------------------
+        // ==========================================
+        // EVENT ENROLMENTS
+        // GET /api/events/{eventId}/enrolments
+        // Organiser only
+        // ==========================================
 
-            var enrolments =
-                await _context.Enrolments
+        [HttpGet("events/{eventId}/enrolments")]
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> GetEventEnrolments(
+            int eventId)
+        {
+            var organiserId = GetCurrentUserId();
 
-                .Where(e =>
-                    e.EventId == eventId)
+            if (organiserId == null)
+                return Unauthorized();
 
+            var eventItem = await _context.Events
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.EventId == eventId);
+
+            if (eventItem == null)
+                return NotFound(new
+                {
+                    message = "Event not found."
+                });
+
+            if (eventItem.OrganiserId != organiserId.Value)
+                return Forbid();
+
+            var enrolments = await _context.Enrolments
+                .AsNoTracking()
+                .Where(e => e.EventId == eventId)
+                .OrderByDescending(e => e.EnrolmentDate)
                 .Select(e => new
                 {
                     e.EnrolmentId,
-
                     e.ParticipantId,
-
-                    ParticipantEmail =
-                        e.Participant != null
-                            ? e.Participant.Email
-                            : null,
-
+                    ParticipantEmail = e.Participant != null
+                        ? e.Participant.Email
+                        : null,
                     e.EventId,
-
                     e.CategoryId,
-
-                    CategoryName =
-                        e.Category != null
-                            ? e.Category.CategoryName
-                            : null,
-
+                    CategoryName = e.Category != null
+                        ? e.Category.CategoryName
+                        : null,
                     e.EnrolmentDate,
-
                     e.Status
                 })
-
                 .ToListAsync();
-
 
             return Ok(enrolments);
         }
 
-
-
-        // =========================================================
-        // PUT: /api/enrolments/{id}
-        //
-        // Participant:
-        //      Can change their selected category.
-        //
-        // Organiser:
-        //      Can change the enrolment status.
-        //
-        // ROLE:
-        // 1 = Organiser
-        // 2 = Participant
-        // =========================================================
+        // ==========================================
+        // UPDATE ENROLMENT
+        // PUT /api/enrolments/{id}
+        // Participant changes category
+        // Organiser changes status
+        // ==========================================
 
         [HttpPut("enrolments/{id}")]
-        [Authorize(Roles = "1,2")]
+        [Authorize(Roles = "Organiser,Participant")]
         public async Task<IActionResult> UpdateEnrolment(
             int id,
             [FromBody] UpdateEnrolmentRequest request)
         {
             if (request == null)
-            {
                 return BadRequest(new
                 {
-                    message =
-                        "Request body is required."
+                    message = "Request body is required."
                 });
-            }
 
+            var userId = GetCurrentUserId();
 
-            var currentUserId =
-                GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
 
-
-            if (currentUserId == null)
-            {
-                return Unauthorized(new
-                {
-                    message =
-                        "Unable to identify the authenticated user."
-                });
-            }
-
-
-            // -----------------------------------------------------
-            // Find enrolment
-            // -----------------------------------------------------
-
-            var enrolment =
-                await _context.Enrolments
-
+            var enrolment = await _context.Enrolments
                 .Include(e => e.Event)
-
-                .FirstOrDefaultAsync(
-                    e => e.EnrolmentId == id);
-
+                .FirstOrDefaultAsync(e => e.EnrolmentId == id);
 
             if (enrolment == null)
-            {
                 return NotFound(new
                 {
-                    message =
-                        "Enrolment not found."
+                    message = "Enrolment not found."
                 });
-            }
 
-
-            // -----------------------------------------------------
-            // Get RoleId from JWT
-            //
-            // 1 = Organiser
-            // 2 = Participant
-            // -----------------------------------------------------
-
-            var roleId =
-                User.FindFirst("RoleId")?.Value;
-
-
-            // =====================================================
-            // PARTICIPANT
-            // =====================================================
-
-            if (roleId == "2")
+            if (User.IsInRole("Participant"))
             {
-                // Participant can only update
-                // their own enrolment
-
-                if (enrolment.ParticipantId !=
-                    currentUserId.Value)
-                {
+                if (enrolment.ParticipantId != userId.Value)
                     return Forbid();
-                }
 
-
-                // -------------------------------------------------
-                // Category is required
-                // -------------------------------------------------
-
-                if (request.CategoryId == null ||
-                    request.CategoryId <= 0)
+                if (!request.CategoryId.HasValue ||
+                    request.CategoryId.Value <= 0)
                 {
                     return BadRequest(new
                     {
-                        message =
-                            "A valid categoryId is required."
+                        message = "A valid categoryId is required."
                     });
                 }
 
-
-                // -------------------------------------------------
-                // Check category
-                // -------------------------------------------------
-
-                var category =
-                    await _context.Categories
-
-                    .FirstOrDefaultAsync(
-                        c => c.CategoryId ==
-                             request.CategoryId.Value);
-
+                var category = await _context.Categories
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c =>
+                        c.CategoryId == request.CategoryId.Value);
 
                 if (category == null)
-                {
                     return NotFound(new
                     {
-                        message =
-                            "Category not found."
+                        message = "Category not found."
                     });
-                }
 
-
-                // -------------------------------------------------
-                // Category must belong to same event
-                // -------------------------------------------------
-
-                if (category.EventId !=
-                    enrolment.EventId)
-                {
+                if (category.EventId != enrolment.EventId)
                     return BadRequest(new
                     {
                         message =
                             "The selected category does not belong to this event."
                     });
-                }
 
-
-                // -------------------------------------------------
-                // Update category
-                // -------------------------------------------------
-
-                enrolment.CategoryId =
-                    request.CategoryId.Value;
+                enrolment.CategoryId = category.CategoryId;
             }
-
-
-            // =====================================================
-            // ORGANISER
-            // =====================================================
-
-            else if (roleId == "1")
+            else if (User.IsInRole("Organiser"))
             {
-                // Organiser can only update enrolments
-                // belonging to their own event.
-
                 if (enrolment.Event == null ||
-                    enrolment.Event.OrganiserId !=
-                    currentUserId.Value)
-                {
+                    enrolment.Event.OrganiserId != userId.Value)
                     return Forbid();
-                }
 
-
-                // -------------------------------------------------
-                // Status is required
-                // -------------------------------------------------
-
-                if (string.IsNullOrWhiteSpace(
-                    request.Status))
-                {
+                if (string.IsNullOrWhiteSpace(request.Status))
                     return BadRequest(new
                     {
-                        message =
-                            "Status is required."
+                        message = "Status is required."
                     });
-                }
 
+                if (request.Status.Trim().Length > 30)
+                    return BadRequest(new
+                    {
+                        message = "Status cannot exceed 30 characters."
+                    });
 
-                // -------------------------------------------------
-                // Update status
-                // -------------------------------------------------
-
-                enrolment.Status =
-                    request.Status;
+                enrolment.Status = request.Status.Trim();
             }
-
-
-            return await SaveUpdatedEnrolment(
-                enrolment);
-        }
-
-
-
-        // =========================================================
-        // DELETE: /api/enrolments/{id}
-        //
-        // Participant:
-        //      Can cancel their own enrolment.
-        //
-        // Organiser:
-        //      Can remove an enrolment from their own event.
-        //
-        // ROLE:
-        // 1 = Organiser
-        // 2 = Participant
-        // =========================================================
-
-        [HttpDelete("enrolments/{id}")]
-        [Authorize(Roles = "1,2")]
-        public async Task<IActionResult> DeleteEnrolment(
-            int id)
-        {
-            var currentUserId =
-                GetCurrentUserId();
-
-
-            if (currentUserId == null)
+            else
             {
-                return Unauthorized(new
-                {
-                    message =
-                        "Unable to identify the authenticated user."
-                });
+                return Forbid();
             }
-
-
-            // -----------------------------------------------------
-            // Find enrolment
-            // -----------------------------------------------------
-
-            var enrolment =
-                await _context.Enrolments
-
-                .Include(e => e.Event)
-
-                .FirstOrDefaultAsync(
-                    e => e.EnrolmentId == id);
-
-
-            if (enrolment == null)
-            {
-                return NotFound(new
-                {
-                    message =
-                        "Enrolment not found."
-                });
-            }
-
-
-            // -----------------------------------------------------
-            // Get RoleId from JWT
-            // -----------------------------------------------------
-
-            var roleId =
-                User.FindFirst("RoleId")?.Value;
-
-
-            // =====================================================
-            // PARTICIPANT
-            // =====================================================
-
-            if (roleId == "2")
-            {
-                // Participant can only delete
-                // their own enrolment.
-
-                if (enrolment.ParticipantId !=
-                    currentUserId.Value)
-                {
-                    return Forbid();
-                }
-            }
-
-
-            // =====================================================
-            // ORGANISER
-            // =====================================================
-
-            else if (roleId == "1")
-            {
-                // Organiser can only delete enrolments
-                // belonging to their own event.
-
-                if (enrolment.Event == null ||
-                    enrolment.Event.OrganiserId !=
-                    currentUserId.Value)
-                {
-                    return Forbid();
-                }
-            }
-
-
-            // -----------------------------------------------------
-            // Delete enrolment
-            // -----------------------------------------------------
-
-            _context.Enrolments.Remove(
-                enrolment);
 
             await _context.SaveChangesAsync();
-
-
-            return NoContent();
-        }
-
-
-
-        // =========================================================
-        // SAVE UPDATED ENROLMENT
-        // =========================================================
-
-        private async Task<IActionResult>
-            SaveUpdatedEnrolment(
-                Enrolment enrolment)
-        {
-            await _context.SaveChangesAsync();
-
 
             return Ok(new
             {
-                message =
-                    "Enrolment updated successfully.",
-
+                message = "Enrolment updated successfully.",
                 enrolment = new
                 {
                     enrolment.EnrolmentId,
-
                     enrolment.ParticipantId,
-
                     enrolment.EventId,
-
                     enrolment.CategoryId,
-
                     enrolment.EnrolmentDate,
-
                     enrolment.Status
                 }
             });
         }
 
+        // ==========================================
+        // DELETE ENROLMENT
+        // DELETE /api/enrolments/{id}
+        // Participant or owning Organiser
+        // ==========================================
 
+        [HttpDelete("enrolments/{id}")]
+        [Authorize(Roles = "Organiser,Participant")]
+        public async Task<IActionResult> DeleteEnrolment(int id)
+        {
+            var userId = GetCurrentUserId();
 
-        // =========================================================
-        // REQUEST MODEL FOR CREATE
-        // =========================================================
+            if (userId == null)
+                return Unauthorized();
+
+            var enrolment = await _context.Enrolments
+                .Include(e => e.Event)
+                .FirstOrDefaultAsync(e => e.EnrolmentId == id);
+
+            if (enrolment == null)
+                return NotFound(new
+                {
+                    message = "Enrolment not found."
+                });
+
+            if (User.IsInRole("Participant"))
+            {
+                if (enrolment.ParticipantId != userId.Value)
+                    return Forbid();
+            }
+            else if (User.IsInRole("Organiser"))
+            {
+                if (enrolment.Event == null ||
+                    enrolment.Event.OrganiserId != userId.Value)
+                    return Forbid();
+            }
+            else
+            {
+                return Forbid();
+            }
+
+            _context.Enrolments.Remove(enrolment);
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // ==========================================
+        // CREATE REQUEST MODEL
+        // ==========================================
 
         public class CreateEnrolmentRequest
         {
             public int CategoryId { get; set; }
         }
 
-
-
-        // =========================================================
-        // REQUEST MODEL FOR UPDATE
-        // =========================================================
+        // ==========================================
+        // UPDATE REQUEST MODEL
+        // ==========================================
 
         public class UpdateEnrolmentRequest
         {
@@ -843,30 +440,19 @@ namespace RaceDay.API.Controllers
             public string? Status { get; set; }
         }
 
-
-
-        // =========================================================
+        // ==========================================
         // GET CURRENT USER ID FROM JWT
-        // =========================================================
+        // ==========================================
 
         private int? GetCurrentUserId()
         {
             var userIdClaim =
-                User.FindFirst(
-                    ClaimTypes.NameIdentifier)?.Value
-
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value
-
                 ?? User.FindFirst("UserId")?.Value;
 
-
-            if (int.TryParse(
-                userIdClaim,
-                out int userId))
-            {
+            if (int.TryParse(userIdClaim, out var userId))
                 return userId;
-            }
-
 
             return null;
         }

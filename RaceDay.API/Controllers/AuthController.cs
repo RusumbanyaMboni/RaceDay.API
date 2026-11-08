@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -26,6 +27,10 @@ namespace RaceDay.API.Controllers
             _configuration = configuration;
         }
 
+        // ==========================================
+        // REGISTER USER
+        // ==========================================
+
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register(
@@ -36,10 +41,10 @@ namespace RaceDay.API.Controllers
                 return BadRequest(ModelState);
             }
 
+            var email = request.Email.Trim().ToLowerInvariant();
 
             var existingUser = await _context.Users
-                .FirstOrDefaultAsync(u =>
-                    u.Email.ToLower() == request.Email.ToLower());
+                .FirstOrDefaultAsync(u => u.Email == email);
 
             if (existingUser != null)
             {
@@ -49,12 +54,13 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-
-
             var role = await _context.Roles
-                .FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
+                .FirstOrDefaultAsync(r =>
+                    r.RoleId == request.RoleId);
 
-            if (role == null)
+            if (role == null ||
+                (role.RoleName != "Organiser" &&
+                 role.RoleName != "Participant"))
             {
                 return BadRequest(new
                 {
@@ -62,48 +68,41 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-
             var user = new User
             {
                 FirstName = request.FirstName.Trim(),
                 LastName = request.LastName.Trim(),
-                Email = request.Email.Trim().ToLower(),
+                Email = email,
                 PhoneNumber = request.PhoneNumber,
                 DateOfBirth = request.DateOfBirth,
-                RoleId = request.RoleId,
+                RoleId = role.RoleId,
 
-            
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(
                     request.Password),
 
-                
                 CreatedAt = DateTime.UtcNow
             };
 
-
             _context.Users.Add(user);
-
             await _context.SaveChangesAsync();
 
-
-
-            return CreatedAtAction(
-                nameof(Register),
-                new { id = user.UserId },
-                new
-                {
-                    message = "Registration successful.",
-                    userId = user.UserId,
-                    firstName = user.FirstName,
-                    lastName = user.LastName,
-                    email = user.Email,
-                    phoneNumber = user.PhoneNumber,
-                    dateOfBirth = user.DateOfBirth,
-                    roleId = user.RoleId,
-                    role = role.RoleName
-                });
+            return StatusCode(201, new
+            {
+                message = "Registration successful.",
+                userId = user.UserId,
+                firstName = user.FirstName,
+                lastName = user.LastName,
+                email = user.Email,
+                phoneNumber = user.PhoneNumber,
+                dateOfBirth = user.DateOfBirth,
+                roleId = user.RoleId,
+                role = role.RoleName
+            });
         }
 
+        // ==========================================
+        // LOGIN USER
+        // ==========================================
 
         [AllowAnonymous]
         [HttpPost("login")]
@@ -115,11 +114,10 @@ namespace RaceDay.API.Controllers
                 return BadRequest(ModelState);
             }
 
-
+            var email = request.Email.Trim().ToLowerInvariant();
 
             var user = await _context.Users
-                .FirstOrDefaultAsync(u =>
-                    u.Email.ToLower() == request.Email.ToLower());
+                .FirstOrDefaultAsync(u => u.Email == email);
 
             if (user == null)
             {
@@ -128,7 +126,6 @@ namespace RaceDay.API.Controllers
                     message = "Invalid email or password."
                 });
             }
-
 
             bool passwordValid;
 
@@ -151,8 +148,6 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-
-
             var role = await _context.Roles
                 .FirstOrDefaultAsync(r =>
                     r.RoleId == user.RoleId);
@@ -165,15 +160,13 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-
-            var token = GenerateJwtToken(user, role.RoleName);
-
-
+            var token = GenerateJwtToken(
+                user,
+                role.RoleName);
 
             return Ok(new
             {
                 message = "Login successful.",
-
                 token = token,
 
                 user = new
@@ -190,11 +183,14 @@ namespace RaceDay.API.Controllers
             });
         }
 
+        // ==========================================
+        // GET AUTHENTICATED USER
+        // ==========================================
+
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> AuthMe()
         {
-    
             var userIdClaim =
                 User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value
@@ -204,7 +200,8 @@ namespace RaceDay.API.Controllers
             {
                 return Unauthorized(new
                 {
-                    message = "Unable to identify the authenticated user."
+                    message =
+                        "Unable to identify the authenticated user."
                 });
             }
 
@@ -219,9 +216,9 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-            // Get the user's role
             var role = await _context.Roles
-                .FirstOrDefaultAsync(r => r.RoleId == user.RoleId);
+                .FirstOrDefaultAsync(r =>
+                    r.RoleId == user.RoleId);
 
             if (role == null)
             {
@@ -231,7 +228,6 @@ namespace RaceDay.API.Controllers
                 });
             }
 
-            // Return current user information
             return Ok(new
             {
                 userId = user.UserId,
@@ -245,77 +241,55 @@ namespace RaceDay.API.Controllers
             });
         }
 
-        // =========================================================
+        // ==========================================
         // GENERATE JWT TOKEN
-        // =========================================================
+        // ==========================================
 
-        private string GenerateJwtToken(User user, string roleName)
+        private string GenerateJwtToken(
+            User user,
+            string roleName)
         {
-            // -----------------------------------------------------
-            // Get JWT configuration
-            // -----------------------------------------------------
+            var jwtKey = _configuration["Jwt:Key"];
 
-            var jwtKey =
-                _configuration["Jwt:Key"]
-                ?? _configuration["Jwt:Secret"]
-                ?? _configuration["JwtKey"];
+            var issuer = _configuration["Jwt:Issuer"];
+            var audience = _configuration["Jwt:Audience"];
 
-            if (string.IsNullOrWhiteSpace(jwtKey))
+            if (string.IsNullOrWhiteSpace(jwtKey) ||
+                string.IsNullOrWhiteSpace(issuer) ||
+                string.IsNullOrWhiteSpace(audience))
             {
                 throw new InvalidOperationException(
-                    "JWT key is not configured. " +
-                    "Add Jwt:Key to appsettings.json.");
+                    "JWT configuration is incomplete.");
             }
 
-
-            var issuer =
-                _configuration["Jwt:Issuer"]
-                ?? "RaceDay.API";
-
-            var audience =
-                _configuration["Jwt:Audience"]
-                ?? "RaceDay.Client";
-
-
-           
-
             var claims = new List<Claim>
-{
-    // User ID
-    new Claim(
-        ClaimTypes.NameIdentifier,
-        user.UserId.ToString()),
+            {
+                new Claim(
+                    ClaimTypes.NameIdentifier,
+                    user.UserId.ToString()),
 
-    // Email
-    new Claim(
-        ClaimTypes.Email,
-        user.Email),
+                new Claim(
+                    ClaimTypes.Email,
+                    user.Email),
 
-    // First name
-    new Claim(
-        ClaimTypes.Name,
-        user.FirstName),
+                new Claim(
+                    ClaimTypes.Name,
+                    user.FirstName),
 
-    // Role ID
-    new Claim(
-        "RoleId",
-        user.RoleId.ToString()),
+                // Numeric role identifier
+                new Claim(
+                    "RoleId",
+                    user.RoleId.ToString()),
 
-    // ASP.NET authorization role
-    new Claim(
-        ClaimTypes.Role,
-        user.RoleId.ToString()),
+                // Role name for [Authorize(Roles = "...")]
+                new Claim(
+                    ClaimTypes.Role,
+                    roleName),
 
-    // Role name
-    new Claim(
-        "RoleName",
-        roleName)
-};
-
-
-            // -----------------------------------------------------
-            // Create signing key
-            // -----------------------------------------------------
+                new Claim(
+                    "RoleName",
+                    roleName)
+            };
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtKey));
@@ -324,11 +298,6 @@ namespace RaceDay.API.Controllers
                 key,
                 SecurityAlgorithms.HmacSha256);
 
-
-            // -----------------------------------------------------
-            // Create token
-            // -----------------------------------------------------
-
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
@@ -336,66 +305,48 @@ namespace RaceDay.API.Controllers
                 expires: DateTime.UtcNow.AddHours(2),
                 signingCredentials: credentials);
 
-
-            // -----------------------------------------------------
-            // Return token string
-            // -----------------------------------------------------
-
             return new JwtSecurityTokenHandler()
                 .WriteToken(token);
         }
 
-
-        // =========================================================
-        // REGISTER REQUEST
-        //
-        // This is intentionally separate from User.
-        //
-        // The API receives "password".
-        // The database stores "PasswordHash".
-        // =========================================================
+        // ==========================================
+        // REGISTER REQUEST MODEL
+        // ==========================================
 
         public class RegisterRequest
         {
             [Required]
             public string FirstName { get; set; } = string.Empty;
 
-
             [Required]
             public string LastName { get; set; } = string.Empty;
-
 
             [Required]
             [EmailAddress]
             public string Email { get; set; } = string.Empty;
 
-
             [Required]
             [MinLength(6)]
             public string Password { get; set; } = string.Empty;
 
-
             public string? PhoneNumber { get; set; }
-
 
             public DateTime? DateOfBirth { get; set; }
 
-
-            [Required]
+            [Range(1, 2,
+                ErrorMessage = "Select a valid account type.")]
             public int RoleId { get; set; }
         }
 
-
-        // =========================================================
-        // LOGIN REQUEST
-        // =========================================================
+        // ==========================================
+        // LOGIN REQUEST MODEL
+        // ==========================================
 
         public class LoginRequest
         {
             [Required]
             [EmailAddress]
             public string Email { get; set; } = string.Empty;
-
 
             [Required]
             public string Password { get; set; } = string.Empty;
