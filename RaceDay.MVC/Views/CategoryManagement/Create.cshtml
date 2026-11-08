@@ -1,0 +1,171 @@
+﻿@model RaceDay.MVC.Models.CategoryViewModel
+
+@{
+    ViewData["Title"] = "Add Category";
+}
+
+<div class="container mt-5 mb-5">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+
+                <div class="card-body p-4">
+
+                    <!-- Header -->
+                    <h2 class="fw-bold mb-2">
+                        Add Category
+                    </h2>
+
+                    <p class="text-muted mb-4">
+                        Create a race category for this event.
+                    </p>
+
+                    <!-- Validation Summary -->
+                    <div asp-validation-summary="All"
+                         class="text-danger mb-3">
+                    </div>
+
+                    <!-- Create Category Form -->
+                    <form asp-controller="CategoryManagement"
+                          asp-action="Create"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <!-- Event ID -->
+                        <input asp-for="EventId" type="hidden" />
+
+                        <!-- Category Name -->
+                        <div class="mb-3">
+
+                            <label asp-for="CategoryName"
+                                   class="form-label fw-semibold">
+                            </label>
+
+                            <input asp-for="CategoryName"
+                                   class="form-control"
+                                   placeholder="e.g. Open Run" />
+
+                            <span asp-validation-for="CategoryName"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                        <!-- Distance -->
+                        <div class="mb-3">
+
+                            <label asp-for="Distance"
+                                   class="form-label fw-semibold">
+                            </label>
+
+                            <div class="input-group">
+
+                                <input asp-for="Distance"
+                                       type="number"
+                                       step="0.01"
+                                       min="0.01"
+                                       class="form-control"
+                                       placeholder="e.g. 5" />
+
+                                <span class="input-group-text">
+                                    km
+                                </span>
+
+                            </div>
+
+                            <span asp-validation-for="Distance"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                        <!-- Age Range -->
+                        <div class="row">
+
+                            <!-- Minimum Age -->
+                            <div class="col-md-6 mb-3">
+
+                                <label asp-for="MinimumAge"
+                                       class="form-label fw-semibold">
+                                </label>
+
+                                <input asp-for="MinimumAge"
+                                       type="number"
+                                       min="0"
+                                       max="120"
+                                       class="form-control"
+                                       placeholder="e.g. 18" />
+
+                                <span asp-validation-for="MinimumAge"
+                                      class="text-danger">
+                                </span>
+
+                            </div>
+
+                            <!-- Maximum Age -->
+                            <div class="col-md-6 mb-3">
+
+                                <label asp-for="MaximumAge"
+                                       class="form-label fw-semibold">
+                                </label>
+
+                                <input asp-for="MaximumAge"
+                                       type="number"
+                                       min="0"
+                                       max="120"
+                                       class="form-control"
+                                       placeholder="e.g. 39" />
+
+                                <span asp-validation-for="MaximumAge"
+                                      class="text-danger">
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Help Message -->
+                        <div class="alert alert-info">
+
+                            <strong>Note:</strong>
+                            Minimum and maximum ages are optional.
+                            Leave them blank if the category
+                            has no age restrictions.
+
+                        </div>
+
+                        <hr />
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex flex-wrap gap-2 mt-4">
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+                                Create Category
+                            </button>
+
+                            <a asp-controller="CategoryManagement"
+                               asp-action="Index"
+                               asp-route-eventId="@Model.EventId"
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

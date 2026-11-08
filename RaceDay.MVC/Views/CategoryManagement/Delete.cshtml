@@ -1,0 +1,111 @@
+﻿@model RaceDay.MVC.Models.CategoryViewModel
+
+@{
+    ViewData["Title"] = "Delete Category";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+
+                    <!-- Page Header -->
+                    <h2 class="fw-bold text-danger mb-3">
+                        Delete Category
+                    </h2>
+
+                    <!-- Warning -->
+                    <div class="alert alert-warning">
+                        <strong>Warning!</strong>
+                        You are about to permanently delete this
+                        category. This action cannot be undone.
+                    </div>
+
+                    <!-- Category Name -->
+                    <h4 class="fw-bold mb-4">
+                        @Model.CategoryName
+                    </h4>
+
+                    <!-- Category Information -->
+                    <table class="table table-bordered">
+                        <tbody>
+
+                            <tr>
+                                <th>Category ID</th>
+                                <td>@Model.CategoryId</td>
+                            </tr>
+
+                            <tr>
+                                <th>Category Name</th>
+                                <td>@Model.CategoryName</td>
+                            </tr>
+
+                            <tr>
+                                <th>Minimum Age</th>
+                                <td>
+                                    @(Model.MinimumAge?.ToString() ?? "No limit")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Maximum Age</th>
+                                <td>
+                                    @(Model.MaximumAge?.ToString() ?? "No limit")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Distance</th>
+                                <td>
+                                    @Model.Distance.ToString("0.##") km
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+
+                    <!-- Important Information -->
+                    <div class="alert alert-info">
+                        Categories that already have participant
+                        enrolments cannot be deleted.
+                    </div>
+
+                    <hr />
+
+                    <p class="text-danger">
+                        Are you sure you want to delete this category?
+                    </p>
+
+                    <!-- Delete Form -->
+                    <form asp-controller="CategoryManagement"
+                          asp-action="Delete"
+                          asp-route-id="@Model.CategoryId"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+
+                            <button type="submit"
+                                    class="btn btn-danger">
+                                Confirm Delete
+                            </button>
+
+                            <a asp-controller="CategoryManagement"
+                               asp-action="Index"
+                               asp-route-eventId="@Model.EventId"
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

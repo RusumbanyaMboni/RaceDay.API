@@ -1,0 +1,127 @@
+﻿@model RaceDay.MVC.Models.UpdateEnrolmentStatusViewModel
+
+@{
+    ViewData["Title"] = "Update Enrolment Status";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+
+                    <h2 class="fw-bold mb-2">
+                        Update Enrolment Status
+                    </h2>
+
+                    <p class="text-muted mb-4">
+                        Manage a participant's event registration.
+                    </p>
+
+                    @if (TempData["ErrorMessage"] is string errorMessage)
+                    {
+                        <div class="alert alert-danger">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-body">
+
+                            <h5 class="fw-bold">
+                                @Model.EventName
+                            </h5>
+
+                            <p class="mb-2">
+                                <strong>Participant ID:</strong>
+                                @Model.ParticipantId
+                            </p>
+
+                            <p class="mb-2">
+                                <strong>Category:</strong>
+                                @Model.CategoryName
+                            </p>
+
+                            <p class="mb-0">
+                                <strong>Current Status:</strong>
+                                <span class="badge bg-secondary">
+                                    @Model.CurrentStatus
+                                </span>
+                            </p>
+
+                        </div>
+                    </div>
+
+                    <form asp-controller="OrganiserEnrolments"
+                          asp-action="UpdateStatus"
+                          asp-route-id="@Model.EnrolmentId"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+
+                            <label for="newStatus"
+                                   class="form-label fw-semibold">
+                                New Status
+                            </label>
+
+                            <select id="newStatus"
+                                    name="newStatus"
+                                    class="form-select"
+                                    required>
+
+                                <option value="Registered"
+                                        selected="@(Model.NewStatus == "Registered")">
+                                    Registered
+                                </option>
+
+                                <option value="Confirmed"
+                                        selected="@(Model.NewStatus == "Confirmed")">
+                                    Confirmed
+                                </option>
+
+                                <option value="Pending"
+                                        selected="@(Model.NewStatus == "Pending")">
+                                    Pending
+                                </option>
+
+                                <option value="Rejected"
+                                        selected="@(Model.NewStatus == "Rejected")">
+                                    Rejected
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <div class="alert alert-info">
+                            Updating the status changes the existing
+                            registration. It does not create another enrolment.
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-4">
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+                                Save Changes
+                            </button>
+
+                            <a asp-controller="OrganiserEnrolments"
+                               asp-action="Index"
+                               asp-route-eventId="@Model.EventId"
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

@@ -1,0 +1,186 @@
+﻿@model RaceDay.MVC.Models.ChangeCategoryViewModel
+
+@{
+    ViewData["Title"] = "Change Category";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+
+                    <!-- Header -->
+                    <h2 class="fw-bold mb-2">
+                        Change Category
+                    </h2>
+
+                    <p class="text-muted mb-4">
+                        Change the race category for your
+                        existing event registration.
+                    </p>
+
+                    <!-- Error Message -->
+                    @if (TempData["ErrorMessage"] is string errorMessage)
+                    {
+                        <div class="alert alert-danger"
+                             role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <!-- Event Information -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-body">
+
+                            <h5 class="fw-bold mb-2">
+                                @Model.EventName
+                            </h5>
+
+                            <p class="mb-0">
+                                <strong>Current Category:</strong>
+                                @Model.CurrentCategoryName
+                            </p>
+
+                        </div>
+                    </div>
+
+                    @if (Model.Categories == null ||
+                         !Model.Categories.Any())
+                    {
+                        <div class="alert alert-info">
+                            No categories are currently available
+                            for this event.
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Available Categories -->
+                        <h5 class="fw-semibold mb-3">
+                            Available Categories
+                        </h5>
+
+                        <div class="table-responsive mb-4">
+
+                            <table class="table table-striped align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Minimum Age</th>
+                                        <th>Maximum Age</th>
+                                        <th>Distance</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @category.CategoryName
+
+                                                @if (category.CategoryId ==
+                                                     Model.CurrentCategoryId)
+                                                {
+                                                    <span class="badge bg-success ms-2">
+                                                        Current
+                                                    </span>
+                                                }
+                                            </td>
+
+                                            <td>
+                                                @(category.MinimumAge?.ToString()
+                                                    ?? "No limit")
+                                            </td>
+
+                                            <td>
+                                                @(category.MaximumAge?.ToString()
+                                                    ?? "No limit")
+                                            </td>
+
+                                            <td>
+                                                @category.Distance.ToString("0.##") km
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+
+                        </div>
+
+                        <!-- Change Category Form -->
+                        <form asp-controller="ParticipantEnrolments"
+                              asp-action="ChangeCategory"
+                              asp-route-id="@Model.EnrolmentId"
+                              method="post">
+
+                            @Html.AntiForgeryToken()
+
+                            <div class="mb-3">
+
+                                <label for="selectedCategoryId"
+                                       class="form-label fw-semibold">
+                                    New Category
+                                </label>
+
+                                <select id="selectedCategoryId"
+                                        name="selectedCategoryId"
+                                        class="form-select"
+                                        required>
+
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        <option value="@category.CategoryId"
+                                                selected="@(category.CategoryId ==
+                                                                                                        Model.SelectedCategoryId)">
+                                            @category.CategoryName -
+                                            @category.Distance.ToString("0.##") km
+                                        </option>
+                                    }
+
+                                </select>
+
+                            </div>
+
+                            <div class="alert alert-info">
+                                Changing your category will update
+                                your existing registration.
+                                It will not create another enrolment.
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="d-flex flex-wrap gap-2 mt-4">
+
+                                <button type="submit"
+                                        class="btn btn-primary">
+                                    Save Changes
+                                </button>
+
+                                <a asp-controller="ParticipantEnrolments"
+                                   asp-action="Index"
+                                   class="btn btn-outline-secondary">
+                                    Cancel
+                                </a>
+
+                            </div>
+
+                        </form>
+                    }
+
+                    @if (Model.Categories == null ||
+                         !Model.Categories.Any())
+                    {
+                        <a asp-controller="ParticipantEnrolments"
+                           asp-action="Index"
+                           class="btn btn-outline-secondary">
+                            Back to My Enrolments
+                        </a>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

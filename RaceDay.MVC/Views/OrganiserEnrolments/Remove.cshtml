@@ -1,0 +1,124 @@
+﻿@model RaceDay.MVC.Models.EnrolmentViewModel
+
+@{
+    ViewData["Title"] = "Remove Enrolment";
+}
+
+<div class="container mt-5 mb-5">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+
+                    <!-- Page Header -->
+                    <h2 class="fw-bold text-danger mb-3">
+                        Remove Participant Enrolment
+                    </h2>
+
+                    <!-- Warning -->
+                    <div class="alert alert-warning">
+                        <strong>Warning!</strong>
+                        You are about to permanently remove
+                        this participant's event registration.
+                        This action cannot be undone.
+                    </div>
+
+                    <!-- Event Name -->
+                    <h4 class="fw-bold mb-4">
+                        @(string.IsNullOrWhiteSpace(Model.EventName)
+                            ? "Selected Event"
+                            : Model.EventName)
+                    </h4>
+
+                    <!-- Registration Information -->
+                    <table class="table table-bordered align-middle">
+
+                        <tbody>
+
+                            <tr>
+                                <th scope="row">Enrolment ID</th>
+                                <td>@Model.EnrolmentId</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Participant ID</th>
+                                <td>@Model.ParticipantId</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Event</th>
+                                <td>
+                                    @(Model.EventName ?? "Unknown Event")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Category</th>
+                                <td>
+                                    @(Model.CategoryName ?? "Unknown Category")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Registration Date</th>
+                                <td>
+                                    @Model.EnrolmentDate.ToString(
+                                        "dd MMM yyyy HH:mm")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Current Status</th>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        @Model.Status
+                                    </span>
+                                </td>
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                    <hr />
+
+                    <p class="fw-semibold text-danger">
+                        Are you sure you want to remove
+                        this participant's registration?
+                    </p>
+
+                    <!-- Remove Confirmation -->
+                    <form asp-controller="OrganiserEnrolments"
+                          asp-action="Remove"
+                          asp-route-id="@Model.EnrolmentId"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+
+                            <button type="submit"
+                                    class="btn btn-danger">
+                                Confirm Removal
+                            </button>
+
+                            <a asp-controller="OrganiserEnrolments"
+                               asp-action="Index"
+                               asp-route-eventId="@Model.EventId"
+                               class="btn btn-outline-secondary">
+                                Keep Registration
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>

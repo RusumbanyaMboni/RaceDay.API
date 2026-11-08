@@ -1,0 +1,126 @@
+﻿@model RaceDay.MVC.Models.ResultViewModel
+
+@{
+    ViewData["Title"] = "Delete Race Result";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+
+                    <h2 class="fw-bold text-danger mb-3">
+                        Delete Race Result
+                    </h2>
+
+                    <!-- Warning -->
+                    <div class="alert alert-warning">
+                        <strong>Warning!</strong>
+                        You are about to permanently delete
+                        this race result. This action
+                        cannot be undone.
+                    </div>
+
+                    <!-- Event Name -->
+                    <h4 class="fw-bold mb-4">
+                        @(Model.EventName ?? "Selected Event")
+                    </h4>
+
+                    <!-- Result Details -->
+                    <table class="table table-bordered align-middle">
+
+                        <tbody>
+
+                            <tr>
+                                <th scope="row">Result ID</th>
+                                <td>@Model.ResultId</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Participant</th>
+                                <td>
+                                    @(string.IsNullOrWhiteSpace(
+                                        Model.ParticipantName)
+                                        ? $"Participant #{Model.ParticipantId}"
+                                        : Model.ParticipantName)
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Category</th>
+                                <td>
+                                    @(Model.CategoryName ?? "Unknown")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Finish Position</th>
+                                <td>@Model.FinishPosition</td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Finish Time</th>
+                                <td>
+                                    @Model.FinishTime.ToString(@"hh\:mm\:ss")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">Recorded At</th>
+                                <td>
+                                    @Model.RecordedAt.ToString(
+                                        "dd MMM yyyy HH:mm")
+                                </td>
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                    <div class="alert alert-info">
+                        Deleting this result does not
+                        delete the participant's event enrolment.
+                        The current API also leaves the
+                        enrolment status unchanged.
+                    </div>
+
+                    <hr />
+
+                    <p class="fw-semibold text-danger">
+                        Are you sure you want to delete this result?
+                    </p>
+
+                    <!-- Confirmation Form -->
+                    <form asp-controller="OrganiserResults"
+                          asp-action="Delete"
+                          asp-route-id="@Model.ResultId"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+
+                            <button type="submit"
+                                    class="btn btn-danger">
+                                Confirm Delete
+                            </button>
+
+                            <a asp-controller="OrganiserResults"
+                               asp-action="Index"
+                               asp-route-eventId="@Model.EventId"
+                               class="btn btn-outline-secondary">
+                                Keep Result
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

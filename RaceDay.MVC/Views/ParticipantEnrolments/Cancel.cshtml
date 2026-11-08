@@ -1,0 +1,119 @@
+﻿@model RaceDay.MVC.Models.EnrolmentViewModel
+
+@{
+    ViewData["Title"] = "Cancel Enrolment";
+}
+
+<div class="container mt-5 mb-5">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+
+                <div class="card-body p-4">
+
+                    <!-- Page Header -->
+                    <h2 class="fw-bold text-danger mb-3">
+                        Cancel Enrolment
+                    </h2>
+
+                    <!-- Warning -->
+                    <div class="alert alert-warning">
+                        <strong>Warning!</strong>
+                        You are about to cancel your registration
+                        for this event. Your enrolment record
+                        will be permanently deleted.
+                    </div>
+
+                    <!-- Event Name -->
+                    <h4 class="fw-bold mb-4">
+                        @(string.IsNullOrWhiteSpace(Model.EventName)
+                            ? "Selected Event"
+                            : Model.EventName)
+                    </h4>
+
+                    <!-- Enrolment Information -->
+                    <table class="table table-bordered">
+
+                        <tbody>
+
+                            <tr>
+                                <th>Enrolment ID</th>
+                                <td>@Model.EnrolmentId</td>
+                            </tr>
+
+                            <tr>
+                                <th>Event</th>
+                                <td>
+                                    @(Model.EventName ?? "Unknown Event")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Category</th>
+                                <td>
+                                    @(Model.CategoryName ?? "Unknown Category")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Registration Date</th>
+                                <td>
+                                    @Model.EnrolmentDate.ToString("dd MMM yyyy HH:mm")
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    <span class="badge bg-success">
+                                        @Model.Status
+                                    </span>
+                                </td>
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                    <hr />
+
+                    <p class="text-danger fw-semibold">
+                        Are you sure you want to cancel
+                        this event registration?
+                    </p>
+
+                    <!-- Confirmation Form -->
+                    <form asp-controller="ParticipantEnrolments"
+                          asp-action="Cancel"
+                          asp-route-id="@Model.EnrolmentId"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+
+                            <button type="submit"
+                                    class="btn btn-danger">
+                                Confirm Cancellation
+                            </button>
+
+                            <a asp-controller="ParticipantEnrolments"
+                               asp-action="Index"
+                               class="btn btn-outline-secondary">
+                                Keep My Registration
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>

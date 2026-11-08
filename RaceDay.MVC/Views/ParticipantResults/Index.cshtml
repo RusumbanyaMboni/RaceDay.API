@@ -1,0 +1,180 @@
+﻿@model List<RaceDay.MVC.Models.ResultViewModel>
+
+@{
+    ViewData["Title"] = "My Race Results";
+}
+
+<div class="container mt-5 mb-5">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between
+        align-items-center flex-wrap gap-3 mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">
+                My Race Results
+            </h2>
+
+            <p class="text-muted mb-0">
+                View your finishing times, positions
+                and completed race results.
+            </p>
+        </div>
+
+        <a asp-controller="Participant"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+            Back to Dashboard
+        </a>
+
+    </div>
+
+    <!-- Controller Error -->
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+    else if (Model == null || !Model.Any())
+    {
+        <!-- Empty Results -->
+        <div class="alert alert-info" role="alert">
+            No race results have been recorded
+            for your enrolments yet.
+        </div>
+    }
+    else
+    {
+        <!-- Summary -->
+        <div class="row g-3 mb-4">
+
+            <div class="col-md-6">
+                <div class="card bg-light border-0 h-100">
+                    <div class="card-body">
+
+                        <h6 class="text-muted">
+                            Total Results
+                        </h6>
+
+                        <h3 class="fw-bold mb-0">
+                            @Model.Count
+                        </h3>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card bg-light border-0 h-100">
+                    <div class="card-body">
+
+                        <h6 class="text-muted">
+                            Best Finish Time
+                        </h6>
+
+                        <h3 class="fw-bold mb-0">
+                            @(Model.Min(r => r.FinishTime).ToString(@"hh\:mm\:ss"))
+                        </h3>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Race Results Table -->
+        <div class="table-responsive">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Event</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Position</th>
+                        <th scope="col">Finish Time</th>
+                        <th scope="col">Recorded At</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var result in Model)
+                    {
+                        <tr>
+
+                            <!-- Event -->
+                            <td class="fw-semibold">
+                                @(string.IsNullOrWhiteSpace(result.EventName)
+                                    ? "Unknown Event"
+                                    : result.EventName)
+                            </td>
+
+                            <!-- Category -->
+                            <td>
+                                @(string.IsNullOrWhiteSpace(result.CategoryName)
+                                    ? "Unknown Category"
+                                    : result.CategoryName)
+                            </td>
+
+                            <!-- Position -->
+                            <td>
+                                <span class="badge bg-primary">
+                                    @result.FinishPosition
+                                </span>
+                            </td>
+
+                            <!-- Finish Time -->
+                            <td class="fw-semibold">
+                                @result.FinishTime.ToString(@"hh\:mm\:ss")
+                            </td>
+
+                            <!-- Recorded At -->
+                            <td>
+                                @result.RecordedAt.ToString("dd MMM yyyy HH:mm")
+                            </td>
+
+                            <!-- View Event -->
+                            <td>
+                                <a asp-controller="ParticipantEvents"
+                                   asp-action="Details"
+                                   asp-route-id="@result.EventId"
+                                   class="btn btn-info btn-sm text-white">
+                                    View Event
+                                </a>
+                            </td>
+
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Total -->
+        <p class="text-muted mt-3">
+            Total Race Results:
+            <strong>@Model.Count</strong>
+        </p>
+    }
+
+    <!-- Navigation -->
+    <div class="mt-4">
+
+        <a asp-controller="ParticipantEnrolments"
+           asp-action="Index"
+           class="btn btn-outline-primary">
+            My Enrolments
+        </a>
+
+        <a asp-controller="ParticipantEvents"
+           asp-action="Index"
+           class="btn btn-outline-secondary ms-2">
+            Browse Events
+        </a>
+
+    </div>
+
+</div>

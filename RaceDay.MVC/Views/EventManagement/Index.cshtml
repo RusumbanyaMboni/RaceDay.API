@@ -1,0 +1,191 @@
+﻿@model List<RaceDay.MVC.Models.EventViewModel>
+
+@{
+    ViewData["Title"] = "My Events";
+}
+
+<div class="container mt-5 mb-5">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">
+                My Events
+            </h2>
+
+            <p class="text-muted mb-0">
+                Manage your RaceDay events.
+            </p>
+        </div>
+
+        <!-- Create Event Button -->
+        <a asp-controller="EventManagement"
+           asp-action="Create"
+           class="btn btn-primary">
+            + Create Event
+        </a>
+
+    </div>
+
+    <!-- Success Message -->
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show"
+             role="alert">
+
+            @successMessage
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close">
+            </button>
+
+        </div>
+    }
+
+    <!-- Error Message from Redirect -->
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger alert-dismissible fade show"
+             role="alert">
+
+            @errorMessage
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close">
+            </button>
+
+        </div>
+    }
+
+    <!-- Error Message from Controller -->
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+    else if (Model == null || !Model.Any())
+    {
+        <!-- No Events -->
+        <div class="alert alert-info" role="alert">
+
+            You haven't created any events yet.
+
+            Click <strong>Create Event</strong>
+            to add your first event.
+
+        </div>
+    }
+    else
+    {
+        <!-- Events Table -->
+        <div class="table-responsive">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Event Name</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Location</th>
+                        <th scope="col">Distance</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+
+                            <!-- Event Name -->
+                            <td class="fw-semibold">
+                                @item.EventName
+                            </td>
+
+                            <!-- Event Date -->
+                            <td>
+                                @item.EventDate.ToString("dd MMM yyyy")
+                            </td>
+
+                            <!-- Location -->
+                            <td>
+                                @item.Location
+                            </td>
+
+                            <!-- Distance -->
+                            <td>
+                                @item.Distance.ToString("0.##") km
+                            </td>
+
+                            <!-- Event Type -->
+                            <td>
+                                <span class="badge bg-primary">
+                                    @item.EventType
+                                </span>
+                            </td>
+
+                            <!-- Event Actions -->
+                            <td>
+                                <div class="d-flex gap-2">
+
+                                    <!-- View Event Details -->
+                                    <a asp-controller="EventManagement"
+                                       asp-action="Details"
+                                       asp-route-id="@item.EventId"
+                                       class="btn btn-info btn-sm text-white">
+                                        Details
+                                    </a>
+
+                                    <!-- Edit Event -->
+                                    <a asp-controller="EventManagement"
+                                       asp-action="Edit"
+                                       asp-route-id="@item.EventId"
+                                       class="btn btn-warning btn-sm">
+                                        Edit
+                                    </a>
+
+                                    <!-- Delete Event -->
+                                    <a asp-controller="EventManagement"
+                                       asp-action="Delete"
+                                       asp-route-id="@item.EventId"
+                                       class="btn btn-danger btn-sm">
+                                        Delete
+                                    </a>
+
+                                </div>
+                            </td>
+
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Total Events -->
+        <p class="text-muted mt-3">
+            Total Events:
+            <strong>@Model.Count</strong>
+        </p>
+    }
+
+    <!-- Back to Dashboard -->
+    <div class="mt-4">
+
+        <a asp-controller="Organiser"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+            Back to Dashboard
+        </a>
+
+    </div>
+
+</div>

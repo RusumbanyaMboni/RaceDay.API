@@ -1,0 +1,203 @@
+﻿@model List<RaceDay.MVC.Models.EnrolmentViewModel>
+
+@{
+    ViewData["Title"] = "My Enrolments";
+}
+
+<div class="container mt-5 mb-5">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">
+                My Enrolments
+            </h2>
+
+            <p class="text-muted mb-0">
+                View your registered events, race categories
+                and enrolment status.
+            </p>
+        </div>
+
+        <a asp-controller="ParticipantEvents"
+           asp-action="Index"
+           class="btn btn-primary">
+            + Browse Events
+        </a>
+
+    </div>
+
+    <!-- Success Message -->
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show"
+             role="alert">
+
+            @successMessage
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close">
+            </button>
+
+        </div>
+    }
+
+    <!-- Error Message -->
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-danger alert-dismissible fade show"
+             role="alert">
+
+            @errorMessage
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close">
+            </button>
+
+        </div>
+    }
+
+    <!-- Controller Error -->
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+    else if (Model == null || !Model.Any())
+    {
+        <!-- No Enrolments -->
+        <div class="alert alert-info" role="alert">
+
+            You haven't registered for any events yet.
+
+            Click <strong>Browse Events</strong>
+            to find an upcoming event.
+
+        </div>
+    }
+    else
+    {
+        <!-- Enrolments Table -->
+        <div class="table-responsive">
+
+            <table class="table table-striped table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Event Name</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Registration Date</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var enrolment in Model)
+                    {
+                        <tr>
+
+                            <!-- Event Name -->
+                            <td class="fw-semibold">
+                                @(string.IsNullOrWhiteSpace(enrolment.EventName)
+                                    ? "Unknown Event"
+                                    : enrolment.EventName)
+                            </td>
+
+                            <!-- Category -->
+                            <td>
+                                @(string.IsNullOrWhiteSpace(enrolment.CategoryName)
+                                    ? "Unknown Category"
+                                    : enrolment.CategoryName)
+                            </td>
+
+                            <!-- Registration Date -->
+                            <td>
+                                @enrolment.EnrolmentDate.ToString("dd MMM yyyy HH:mm")
+                            </td>
+
+                            <!-- Status -->
+                            <td>
+                                @{
+                                    var status = enrolment.Status ?? "";
+
+                                    var badgeClass = status.ToLowerInvariant() switch
+                                    {
+                                        "registered" => "bg-success",
+                                        "confirmed" => "bg-success",
+                                        "pending" => "bg-warning text-dark",
+                                        "cancelled" => "bg-danger",
+                                        "rejected" => "bg-danger",
+                                        _ => "bg-secondary"
+                                    };
+                                }
+
+                                <span class="badge @badgeClass">
+                                    @enrolment.Status
+                                </span>
+                            </td>
+
+                            <!-- Actions -->
+                            <td>
+                                <div class="d-flex gap-2 flex-wrap">
+
+                                    <!-- View Event -->
+                                    <a asp-controller="ParticipantEvents"
+                                       asp-action="Details"
+                                       asp-route-id="@enrolment.EventId"
+                                       class="btn btn-info btn-sm text-white">
+                                        View Event
+                                    </a>
+
+                                    <!-- Change Category -->
+                                    <a asp-controller="ParticipantEnrolments"
+                                       asp-action="ChangeCategory"
+                                       asp-route-id="@enrolment.EnrolmentId"
+                                       class="btn btn-warning btn-sm">
+                                        Change Category
+                                    </a>
+
+                                    <!-- Cancel Enrolment -->
+                                    <a asp-controller="ParticipantEnrolments"
+                                       asp-action="Cancel"
+                                       asp-route-id="@enrolment.EnrolmentId"
+                                       class="btn btn-danger btn-sm">
+                                        Cancel Enrolment
+                                    </a>
+
+                                </div>
+                            </td>
+
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- Total -->
+        <p class="text-muted mt-3">
+            Total Enrolments:
+            <strong>@Model.Count</strong>
+        </p>
+    }
+
+    <!-- Back to Dashboard -->
+    <div class="mt-4">
+
+        <a asp-controller="Participant"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+            Back to Dashboard
+        </a>
+
+    </div>
+
+</div>

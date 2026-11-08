@@ -1,0 +1,184 @@
+﻿@{
+    ViewData["Title"] = "Participant Dashboard";
+
+    var firstName = ViewBag.FirstName as string ?? "Participant";
+}
+
+<div class="container mt-5 mb-5">
+
+    <div class="card shadow border-0">
+        <div class="card-body p-4">
+
+            <!-- Welcome Section -->
+            <h2 class="fw-bold mb-2">
+                Welcome, @firstName!
+            </h2>
+
+            <p class="text-muted">
+                Your RaceDay Participant Dashboard
+            </p>
+
+            <hr />
+
+            <h4 class="fw-bold mt-4">
+                Events & Race Management
+            </h4>
+
+            <p>
+                Discover events, manage registrations,
+                view race results and update your profile.
+            </p>
+
+            <!-- Dashboard Cards -->
+            <div class="row g-3 mt-2">
+
+                <!-- Browse Events -->
+                <div class="col-md-6 col-lg-3">
+
+                    <div class="card bg-light border-0 h-100">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                Browse Events
+                            </h5>
+
+                            <p class="text-muted">
+                                Explore upcoming running,
+                                walking and cycling events,
+                                and register for a category.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="ParticipantEvents"
+                                   asp-action="Index"
+                                   class="btn btn-primary btn-sm">
+                                    Browse Events
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- My Enrolments -->
+                <div class="col-md-6 col-lg-3">
+
+                    <div class="card bg-light border-0 h-100">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                My Enrolments
+                            </h5>
+
+                            <p class="text-muted">
+                                View registered events,
+                                change race categories and
+                                manage your enrolments.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="ParticipantEnrolments"
+                                   asp-action="Index"
+                                   class="btn btn-primary btn-sm">
+                                    My Enrolments
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- My Results -->
+                <div class="col-md-6 col-lg-3">
+
+                    <div class="card bg-light border-0 h-100">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                My Race Results
+                            </h5>
+
+                            <p class="text-muted">
+                                View your finishing times,
+                                race positions and
+                                recorded performances.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="ParticipantResults"
+                                   asp-action="Index"
+                                   class="btn btn-success btn-sm">
+                                    View My Results
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- My Profile -->
+                <div class="col-md-6 col-lg-3">
+
+                    <div class="card bg-light border-0 h-100">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                My Profile
+                            </h5>
+
+                            <p class="text-muted">
+                                View and update your
+                                personal information,
+                                contact number and
+                                date of birth.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="ParticipantProfile"
+                                   asp-action="Index"
+                                   class="btn btn-dark btn-sm">
+                                    My Profile
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Information -->
+            <div class="alert alert-info mt-4">
+
+                <strong>Participant Features</strong>
+
+                <p class="mb-0 mt-2">
+                    You can browse events, register for
+                    categories, manage enrolments,
+                    view race results and edit your profile.
+                </p>
+
+            </div>
+
+            <!-- Logout -->
+            <form asp-controller="Account"
+                  asp-action="Logout"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <button type="submit"
+                        class="btn btn-outline-danger">
+                    Logout
+                </button>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>

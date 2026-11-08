@@ -1,0 +1,361 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+/* ==============================
+   RACEDAY MODERN SPORTS THEME
+   ============================== */
+
+:root {
+    --primary: #101F3C;
+    --accent: #FF6B35;
+    --background: #F3F6FB;
+    --text: #243047;
+}
+
+/* Page Background */
+body {
+    background: linear-gradient( 135deg, #F3F6FB 0%, #E7EEF8 100% );
+    color: var(--text);
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Navigation */
+.navbar {
+    background: var(--primary) !important;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.12);
+}
+
+    .navbar .navbar-brand,
+    .navbar .nav-link {
+        color: white !important;
+    }
+
+        .navbar .nav-link:hover {
+            color: var(--accent) !important;
+        }
+
+/* Cards */
+.card {
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.07);
+    transition: transform 0.2s ease;
+}
+
+    .card:hover {
+        transform: translateY(-3px);
+    }
+
+/* Buttons */
+.btn-primary {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    border-radius: 9px;
+    font-weight: 600;
+}
+
+    .btn-primary:hover {
+        background: #E85A27 !important;
+        border-color: #E85A27 !important;
+    }
+
+/* Headings */
+h1, h2, h3, h4 {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(255,107,53,0.15);
+    }
+
+/* Tables */
+.table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Footer */
+footer {
+    background: var(--primary);
+    color: white !important;
+    padding: 18px;
+}
+
+    footer a {
+        color: #FFB199;
+    }
+
+
+
+/* ===================================
+   RACEDAY PROFESSIONAL SPORTS THEME
+   =================================== */
+
+:root {
+    --rd-navy: #101f3c;
+    --rd-orange: #ff6b35;
+    --rd-orange-hover: #e85a27;
+    --rd-light: #f3f6fb;
+    --rd-text: #243047;
+}
+
+body.raceday-theme {
+    background: radial-gradient(circle at 95% 10%, rgba(255, 107, 53, 0.09), transparent 32%), linear-gradient(135deg, #f3f6fb, #e5edf8);
+    color: var(--rd-text);
+    font-family: "Segoe UI", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* NAVBAR */
+
+.raceday-navbar {
+    background: linear-gradient(110deg, #101f3c, #203c6a);
+    padding: 16px 0;
+}
+
+.raceday-brand {
+    font-size: 1.65rem;
+    letter-spacing: -0.5px;
+}
+
+.raceday-navbar .nav-link {
+    color: #edf3ff !important;
+    font-weight: 500;
+    padding: 8px 14px !important;
+    transition: color 0.2s ease;
+}
+
+    .raceday-navbar .nav-link:hover {
+        color: #ffb18f !important;
+    }
+
+.btn-raceday-logout {
+    border: 1px solid #ffb18f;
+    color: white;
+    border-radius: 9px;
+    padding: 7px 16px;
+}
+
+    .btn-raceday-logout:hover {
+        background: var(--rd-orange);
+        border-color: var(--rd-orange);
+        color: white;
+    }
+
+/* MAIN CONTENT */
+
+.raceday-content {
+    flex: 1;
+}
+
+    .raceday-content h1,
+    .raceday-content h2,
+    .raceday-content h3,
+    .raceday-content h4 {
+        color: var(--rd-navy);
+        font-weight: 700;
+    }
+
+    /* CARDS */
+
+    .raceday-content .card {
+        border: 1px solid rgba(16, 31, 60, 0.06) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 10px 30px rgba(16, 31, 60, 0.07);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+        .raceday-content .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 34px rgba(16, 31, 60, 0.11);
+        }
+
+    /* BUTTONS */
+
+    .raceday-content .btn-primary {
+        background: var(--rd-orange);
+        border-color: var(--rd-orange);
+        border-radius: 9px;
+        font-weight: 600;
+    }
+
+        .raceday-content .btn-primary:hover {
+            background: var(--rd-orange-hover);
+            border-color: var(--rd-orange-hover);
+        }
+
+    .raceday-content .btn-secondary {
+        border-radius: 9px;
+    }
+
+    /* FORMS */
+
+    .raceday-content .form-control,
+    .raceday-content .form-select {
+        border-radius: 10px;
+        padding: 10px 13px;
+    }
+
+        .raceday-content .form-control:focus,
+        .raceday-content .form-select:focus {
+            border-color: var(--rd-orange);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.16);
+        }
+
+    /* TABLES */
+
+    .raceday-content .table {
+        background: white;
+        border-radius: 12px;
+    }
+
+        .raceday-content .table thead {
+            background: #e9eef8;
+        }
+
+/* FOOTER */
+
+.raceday-footer {
+    background: var(--rd-navy);
+    color: #d9e4f6;
+    padding: 20px 0;
+    font-size: 0.9rem;
+    margin-top: auto;
+}
+
+/* MOBILE */
+
+@media (max-width: 576px) {
+    .raceday-brand {
+        font-size: 1.35rem;
+    }
+
+    .raceday-content .card {
+        border-radius: 13px !important;
+    }
+}
+
+
+
+/* ==========================================
+   RACEDAY - ORGANISER DASHBOARD
+   ========================================== */
+
+.organiser-dashboard > .card {
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 24px !important;
+    overflow: hidden;
+}
+
+    /* Main dashboard spacing */
+    .organiser-dashboard > .card > .card-body {
+        padding: 35px !important;
+    }
+
+/* Dashboard welcome heading */
+.organiser-dashboard h2 {
+    color: #101f3c;
+    font-weight: 800;
+}
+
+/* Section headings */
+.organiser-dashboard h4 {
+    color: #101f3c;
+    font-weight: 700;
+}
+
+/* Statistic cards */
+.organiser-dashboard .row:first-of-type .card.bg-light {
+    background: linear-gradient( 135deg, #101f3c, #294b7c ) !important;
+    border-radius: 16px !important;
+    min-height: 130px;
+}
+
+    /* Statistic labels */
+    .organiser-dashboard .row:first-of-type .card.bg-light h6 {
+        color: #d6e4fa !important;
+        font-weight: 600;
+    }
+
+    /* Statistic numbers */
+    .organiser-dashboard .row:first-of-type .card.bg-light h2 {
+        color: #ffffff !important;
+        font-size: 2.4rem;
+    }
+
+/* Management cards */
+.organiser-dashboard .row:nth-of-type(2) .card.bg-light {
+    background: #ffffff !important;
+    border: 1px solid #e8edf5 !important;
+    border-top: 4px solid #ff6b35 !important;
+    border-radius: 16px !important;
+    min-height: 230px;
+}
+
+/* Management headings */
+.organiser-dashboard .row:nth-of-type(2) .card h5 {
+    color: #101f3c;
+}
+
+/* Management buttons */
+.organiser-dashboard .row:nth-of-type(2) .btn {
+    border-radius: 8px;
+    padding: 9px 15px;
+    font-weight: 600;
+}
+
+/* Information box */
+.organiser-dashboard .alert-info {
+    background: #e7f1ff;
+    color: #18385f;
+    border: 1px solid #cfe2ff;
+    border-radius: 14px;
+    padding: 22px;
+}
+
+/* Logout */
+.organiser-dashboard .btn-outline-danger {
+    border-radius: 9px;
+    padding: 9px 18px;
+}
+
+/* Responsive layout */
+@media (max-width: 768px) {
+    .organiser-dashboard > .card > .card-body {
+        padding: 20px !important;
+    }
+}
+

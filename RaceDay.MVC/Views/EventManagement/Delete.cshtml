@@ -1,0 +1,111 @@
+﻿@model RaceDay.MVC.Models.EventViewModel
+
+@{
+    ViewData["Title"] = "Delete Event";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow border-0">
+
+                <div class="card-body p-4">
+
+                    <h2 class="fw-bold text-danger mb-3">
+                        Delete Event
+                    </h2>
+
+                    <div class="alert alert-warning"
+                         role="alert">
+
+                        <strong>Warning!</strong>
+
+                        You are about to permanently delete
+                        this event.
+
+                        All related categories, enrolments
+                        and race results will also be deleted.
+
+                        This action cannot be undone.
+
+                    </div>
+
+                    <h4 class="fw-bold mb-3">
+                        @Model.EventName
+                    </h4>
+
+                    <dl class="row">
+
+                        <dt class="col-sm-4">
+                            Event Date
+                        </dt>
+
+                        <dd class="col-sm-8">
+                            @Model.EventDate.ToString("dd MMM yyyy HH:mm")
+                        </dd>
+
+                        <dt class="col-sm-4">
+                            Location
+                        </dt>
+
+                        <dd class="col-sm-8">
+                            @Model.Location
+                        </dd>
+
+                        <dt class="col-sm-4">
+                            Distance
+                        </dt>
+
+                        <dd class="col-sm-8">
+                            @Model.Distance.ToString("0.##") km
+                        </dd>
+
+                        <dt class="col-sm-4">
+                            Event Type
+                        </dt>
+
+                        <dd class="col-sm-8">
+                            @Model.EventType
+                        </dd>
+
+                    </dl>
+
+                    <hr />
+
+                    <p class="fw-semibold text-danger">
+                        Are you sure you want to delete
+                        this event?
+                    </p>
+
+                    <form asp-controller="EventManagement"
+                          asp-action="Delete"
+                          asp-route-id="@Model.EventId"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="d-flex gap-2">
+
+                            <button type="submit"
+                                    class="btn btn-danger">
+                                Confirm Delete
+                            </button>
+
+                            <a asp-controller="EventManagement"
+                               asp-action="Index"
+                               class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>

@@ -1,0 +1,290 @@
+﻿
+@model RaceDay.MVC.Models.OrganiserDashboardViewModel
+
+@{
+    ViewData["Title"] = "Organiser Dashboard";
+}
+
+<div class="container mt-5 mb-5 organiser-dashboard">
+
+    <div class="card shadow border-0">
+
+        <div class="card-body p-4">
+
+            <!-- Welcome Section -->
+            <h2 class="fw-bold mb-2">
+                Welcome, @Model.FirstName!
+            </h2>
+
+            <p class="text-muted">
+                Your RaceDay Organiser Dashboard
+            </p>
+
+            <hr />
+
+            <!-- Dashboard Statistics -->
+            <h4 class="fw-bold mt-4">
+                Dashboard Overview
+            </h4>
+
+            <p class="text-muted">
+                Statistics for the events you organise.
+            </p>
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="alert alert-warning" role="alert">
+                    @ViewBag.ErrorMessage
+                </div>
+            }
+
+            @if (Model.StatisticsAvailable)
+            {
+                <div class="row g-3 mt-2 mb-4">
+
+                    <!-- My Events -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+
+                                <h6 class="text-muted">
+                                    My Events
+                                </h6>
+
+                                <h2 class="fw-bold mb-0">
+                                    @Model.TotalEvents
+                                </h2>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Enrolments -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+
+                                <h6 class="text-muted">
+                                    Total Enrolments
+                                </h6>
+
+                                <h2 class="fw-bold mb-0">
+                                    @Model.TotalEnrolments
+                                </h2>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirmed Enrolments -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+
+                                <h6 class="text-muted">
+                                    Confirmed
+                                </h6>
+
+                                <h2 class="fw-bold mb-0">
+                                    @Model.ConfirmedEnrolments
+                                </h2>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recorded Results -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+
+                                <h6 class="text-muted">
+                                    Recorded Results
+                                </h6>
+
+                                <h2 class="fw-bold mb-0">
+                                    @Model.TotalResults
+                                </h2>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    Dashboard statistics are temporarily unavailable.
+                    Your event-management features can still be used.
+                </div>
+            }
+
+            <hr />
+
+            <!-- Event Management Section -->
+            <h4 class="fw-bold mt-4">
+                Event Management
+            </h4>
+
+            <p class="text-muted">
+                Manage your events, race categories,
+                participant enrolments, race results
+                and personal profile.
+            </p>
+
+            <!-- Management Cards -->
+            <div class="row g-3 mt-2">
+
+                <!-- My Events -->
+                <div class="col-md-6 col-xl-3">
+
+                    <div class="card border-0 bg-light h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                My Events
+                            </h5>
+
+                            <p class="text-muted">
+                                Create, view, edit and delete your
+                                events and manage race categories.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="EventManagement"
+                                   asp-action="Index"
+                                   class="btn btn-primary btn-sm">
+                                    Manage Events
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Enrolments -->
+                <div class="col-md-6 col-xl-3">
+
+                    <div class="card border-0 bg-light h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                Enrolments
+                            </h5>
+
+                            <p class="text-muted">
+                                View participants, manage registrations
+                                and update enrolment statuses.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="EventManagement"
+                                   asp-action="Index"
+                                   class="btn btn-success btn-sm">
+                                    Manage Enrolments
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Race Results -->
+                <div class="col-md-6 col-xl-3">
+
+                    <div class="card border-0 bg-light h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                Race Results
+                            </h5>
+
+                            <p class="text-muted">
+                                Record finishing times, manage
+                                participant positions and edit results.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="EventManagement"
+                                   asp-action="Index"
+                                   class="btn btn-dark btn-sm">
+                                    Manage Results
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- My Profile -->
+                <div class="col-md-6 col-xl-3">
+
+                    <div class="card border-0 bg-light h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column">
+
+                            <h5 class="fw-bold">
+                                My Profile
+                            </h5>
+
+                            <p class="text-muted">
+                                View and update your personal information,
+                                contact details and profile picture.
+                            </p>
+
+                            <div class="mt-auto">
+                                <a asp-controller="OrganiserProfile"
+                                   asp-action="Index"
+                                   class="btn btn-secondary btn-sm">
+                                    My Profile
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Information -->
+            <div class="alert alert-info mt-4">
+
+                <strong>Organiser Management</strong>
+
+                <p class="mb-0 mt-2">
+                    You can create and manage events, configure
+                    categories, manage participant enrolments
+                    and record race results.
+
+                    Select an event to access its enrolments,
+                    categories and results.
+
+                    You can also manage your personal information
+                    and profile picture through My Profile.
+                </p>
+
+            </div>
+
+            <!-- Logout -->
+            <form asp-controller="Account"
+                  asp-action="Logout"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <button type="submit"
+                        class="btn btn-outline-danger">
+                    Logout
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
