@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using RaceDay.API.Controllers;
 using RaceDay.API.Data;
 using RaceDay.API.Models;
@@ -19,6 +20,17 @@ public class UnitTest1
         return new RaceDayDbContext(options);
     }
 
+
+    // These tests cover event CRUD and ownership, not Azure image operations.
+    // The EventController requires a blob service, but none of the methods
+    // exercised here use it. No live Azure service or credentials are needed.
+    private static EventController CreateEventController(RaceDayDbContext context)
+    {
+        return new EventController(
+            context,
+            blobStorageService: null!,
+            logger: NullLogger<EventController>.Instance);
+    }
 
     // =========================================================
     // EVENT TESTS
@@ -44,7 +56,7 @@ public class UnitTest1
 
         await context.SaveChangesAsync();
 
-        var controller = new EventController(context);
+        var controller = CreateEventController(context);
 
         var result = await controller.GetEvents();
 
@@ -59,7 +71,7 @@ public class UnitTest1
     {
         using var context = CreateContext();
 
-        var controller = new EventController(context);
+        var controller = CreateEventController(context);
 
         var result = await controller.GetEvent(999);
 
@@ -72,7 +84,7 @@ public class UnitTest1
     {
         using var context = CreateContext();
 
-        var controller = new EventController(context);
+        var controller = CreateEventController(context);
 
         var claims = new List<Claim>
         {
@@ -134,7 +146,7 @@ public class UnitTest1
     {
         using var context = CreateContext();
 
-        var controller = new EventController(context);
+        var controller = CreateEventController(context);
 
         var claims = new List<Claim>
         {
@@ -191,7 +203,7 @@ public class UnitTest1
     {
         using var context = CreateContext();
 
-        var controller = new EventController(context);
+        var controller = CreateEventController(context);
 
         var claims = new List<Claim>
         {
@@ -265,7 +277,7 @@ public class UnitTest1
 
         await context.SaveChangesAsync();
 
-        var controller = new EventController(context);
+        var controller = CreateEventController(context);
 
         var claims = new List<Claim>
         {
@@ -512,9 +524,11 @@ public class UnitTest1
 
         var result = await controller.Register(request);
 
-        var createdResult =
-            Assert.IsType<CreatedAtActionResult>(result);
+        // Registration currently returns an ObjectResult.
+        // Verify that the response represents successful creation (HTTP 201).
+        var createdResult = Assert.IsType<ObjectResult>(result);
 
+        Assert.Equal(201, createdResult.StatusCode);
         Assert.NotNull(createdResult.Value);
 
         var savedUser = await context.Users
